@@ -16,7 +16,8 @@
  ref		drawing		0	0`
 ```
    Copy this file into the pill directory
-   In entry.py, change `layermap_file` to the filename
+   In entry.py, change `layermap_file` to the filename.
+   
    2.  In virtuoso, run:
 
 ```
