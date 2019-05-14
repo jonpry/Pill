@@ -1,6 +1,4 @@
 #!/usr/bin/python
-#Copyright 2019 - Jon Pry
-
 import re
 import numpy as np
 import compiler
@@ -46,7 +44,7 @@ grammar = r"""
      block       = ws? stmts
      procedure   = PROCEDURE LPAR ws? identifier LPAR ws? (identifier ws?)* string? ws? RPAR ws? stmts RPAR
      identifier  = !((reserved) (ws/RPAR/EQU/PLUS/MINUS/RBR/BANG/TILDA/LT/GT/DOT/LPAR)) ~"[a-zA-Z_][a-zA-Z_0-9]*"
-     reserved    = IF / ELSE / THEN / FOR / PROCEDURE / WHEN / LET / UNLESS / CASE / NIL / FOREACH / SETOF / EXISTS / TAU / RETURN / COND
+     reserved    = IF / ELSE / THEN / FOR / PROCEDURE / WHEN / LET / UNLESS / CASE / NIL / FOREACH / SETOF / EXISTS / TAU / RETURN / COND / WHILE
      list        = LPAR (listelem ws?)* RPAR
      keyword_func= LPAR func_name ws? ((Q identifier ws?)? ororexpr ws?)+ RPAR
      func_call2  = func_name LPAR ws? ((Q identifier ws?)? ororexpr ws?)+ RPAR
@@ -56,18 +54,19 @@ grammar = r"""
      ifthen      = THEN ws? stmts ws? (ELSE ws? stmts?)?
      ifstmt      = stmt (ws? stmt)?
      if          = IF LPAR ws? assign ws?  (ifthen/ifstmt) ws? RPAR
+     while       = WHILE LPAR ws? assign ws? stmts RPAR
      when        = WHEN LPAR ws? assign ws? stmts RPAR
      unless      = UNLESS LPAR ws? assign ws? stmts RPAR
      case        = CASE LPAR identifier ws? case_list RPAR
      foreach     = FOREACH LPAR identifier ws? assign ws? stmts RPAR
      for         = FOR LPAR identifier ws? assign ws? assign ws? stmts RPAR
      cond        = COND LPAR (LPAR assign ws? stmts ws? RPAR)+ RPAR
-     case_list   = LPAR (number / string) ws? stmts ws? RPAR case_list
+     case_list   = LPAR (list / assign) ws? stmts ws? RPAR case_list?
      proglet     = (PROG/LET) LPAR LPAR (identifier ws?)* RPAR stmts ws? RPAR
      return      = RETURN LPAR assign? RPAR
      number      = ~'\d+\.?\d*' ~"[u]|e-?[0-9]+"?
      string      = '"' ~r'\\.|[^\"\\]*'* '"'
-     stmt        = procedure / proglet / if / case / when / unless / foreach / for / return / assign / cond / list
+     stmt        = procedure / proglet / if / case / when / unless / while / foreach / for / return / assign / cond / list
      stmts       = stmt ws? stmts?
       
 
@@ -132,6 +131,7 @@ grammar = r"""
      EXISTS = "exists"
      RETURN = "return"
      COND = "cond"
+     WHILE = "while"
 
      LPAR        = "(" ws?
      RPAR        = ")" ws?
@@ -483,19 +483,23 @@ class Visitor(NodeVisitor):
        def gen(ref=False,node=node):
           v = float(children[0].text)
           if children[1]:
+             print "suffix"
              t = children[1][0].text
              if t == "u":
                 v *= 1e-6
              elif t[0] == "e":
-                v = float(children[0].text + t)
+                m = children[0].text
+                m+=t
+                v = float(m)
              else:
                 print t
                 assert(False)
                 exit(0)
-          try:
-             v = int(children[0].text)
-          except:
-             pass
+          else:
+             try:
+                v = int(children[0].text)
+             except:
+                pass
           self.c.LOAD_CONST(v)
        return gen
 
@@ -672,6 +676,12 @@ class Visitor(NodeVisitor):
 
         return gen
 
+    def visit_while(self,node,children):
+       #WHEN LPAR ws? ororexpr ws? stmts RPAR
+       def gen(ref=False,node=node,children=children):
+          self.gen_cond(node,children[3],children[5],None,True)
+       return gen
+
     def visit_when(self,node,children):
        #WHEN LPAR ws? ororexpr ws? stmts RPAR
        def gen(ref=False,node=node,children=children):
@@ -684,16 +694,21 @@ class Visitor(NodeVisitor):
           self.gen_cond(node,children[3],None,children[5])
        return gen
   
-    def gen_cond(self,node,cond,th_code,el_code):
+    def gen_cond(self,node,cond,th_code,el_code,loop=False):
         self.c.LOAD_CONST(None)
         ps = self.c.stack_size
+        if loop:
+           tgt = self.c.here()
         cond()
         els = self.c.POP_JUMP_IF_FALSE()     
         #if code
         th_code()
         done = None           
         try:
-           done = self.c.JUMP_ABSOLUTE()        
+           if loop:
+              self.c.JUMP_ABSOLUTE(tgt)
+           else:
+              done = self.c.JUMP_ABSOLUTE()        
         except Exception as e:
            print str(e)
            print node.text
@@ -734,6 +749,14 @@ class Visitor(NodeVisitor):
            #exit(0)
            self.gen_cond(node,children[3],children[5][0][0],children[5][0][1])
         return gen
+
+    def visit_case_list(self,node,children):
+      pass #not done yet
+
+    def visit_case(self,node,children):
+      def gen(self,node,children):
+         assert(False) #not done yet
+      return gen
 
     def visit_for(self,node,children):
        # FOR LPAR identifier ws? ororexpr ws? ororexpr ws? stmts RPAR
@@ -1059,7 +1082,7 @@ def init(props,layermap):
 
 def cload(code,version):
    compiled = code.split(".")[0] + ".ilc"
-   h = hashlib.md5(code).hexdigest()
+   h = hashlib.md5(open(code).read()).hexdigest()
    try:
       p = pickle.load( open( compiled, "rb" ) )
       assert(p['version'] == version)
@@ -1069,6 +1092,7 @@ def cload(code,version):
       for k,v in p['functions'].iteritems():
           skill.procedures[k] = new.function(v,globals())
    except Exception as e:
+      print "Compiling: " + code
       skill.iprocs = {} #clear already loaded functions
       load(code)
       p = { 'version' : version, 'code' : code, 'hash' : h, 'functions' : skill.iprocs}
@@ -1101,6 +1125,7 @@ def apply_params():
 def cdfg_init(library,cell_name):
    skill.variables['cdfgData'] = runtime.bag
    skill.variables['cdfgData']['id'] = {'lib' : {'name' : library} , 'cell' : {'name' : cell_name}, 'libName' : library, 'cellName' : cell_name, 'name' : cell_name}
+   skill.variables['cdfgData']['recall'] = {'value' : '0'}
 
 def pcell_apply(name,value):
    runtime.bag[name]['value'] = value

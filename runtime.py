@@ -1,5 +1,6 @@
 import inspect
 import sys
+import os
 import re
 from props import *
 from tools import Lazy
@@ -316,7 +317,13 @@ def rodPointY(l):
    return l[1]
 
 def snapToGrid(v,g):
-   return round(v/float(g))*g
+   ret = round(v/float(g))*g
+   if not ret:
+      print v 
+      print g
+      print v/g
+      assert(ret)
+   return ret
 
 #dbCreateLabel(cv 4 1:1 "myLabel" "centerLeft" "R0" "roman" 2)
 def dbCreateLabel(cell,layer,origin,text,justification,orientation,font,height):
@@ -409,9 +416,19 @@ def eval(v):
       return interp(v.expr)
    return v
 
+def ddGetObjReadPath(o):
+   return "."
+
+def close(f):
+   f.close()
+
+def _gets(f):
+   return f.readline()
+
 def findFunc(name):
    def find(*args):
       print "********************" + name
+      print args
       assert(False)
       exit(0)
    return find
@@ -499,6 +516,7 @@ def run(props_file,layermap_file,s,r):
    skill.procedures['rodAddPoints'] = rodAddPoints
    skill.procedures['rodAlign'] = rodAlign
    skill.procedures['rodCreatePath'] = rodCreatePath
+   skill.procedures['rodCreatePolygon'] = findFunc('rodCreatePolygon')
    skill.procedures['get_pname'] = get_pname
    skill.procedures['concat'] = concat
    skill.procedures['rexMatchp'] = rexMatchp
@@ -524,9 +542,11 @@ def run(props_file,layermap_file,s,r):
    skill.procedures['exp'] = math.exp
    skill.procedures['errsetstring'] = nullfunc
    skill.procedures['infile'] = open
-   skill.procedures['ddGetObjReadPath'] = nullfunc
-   skill.procedures['getShellEnvVar'] = nullfunc
-   skill.procedures['_gets'] = nullfunc
-   skill.procedures['isPreSet'] = nullfunc
-
+   skill.procedures['ddGetObjReadPath'] = ddGetObjReadPath
+   skill.procedures['getShellEnvVar'] = findFunc('getShellEnvVar')
+   skill.procedures['_gets'] = _gets
+   skill.procedures['isPreSet'] = findFunc('isPreSet')
+   skill.procedures['isFile'] = os.path.isfile
+   skill.procedures['close'] = close
+   skill.procedures['exit'] = exit
 
