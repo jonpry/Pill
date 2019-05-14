@@ -202,7 +202,10 @@ def maxNinN(limit,obj,space):
    if n*space + (n+1)*obj <= limit:
       n += 1
 
-   space = (limit - n * obj) / (n-1)
+   if n <= 1: 
+      space = (limit - n * obj)/2
+   else:
+      space = (limit - n * obj) / (n-1)
    return (n,space)
 
 def rodFillBBoxWithRects(layer,fillBBox,width,length,spaceX,spaceY,gap="distribute",cvId=None):
