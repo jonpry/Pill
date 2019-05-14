@@ -751,11 +751,37 @@ class Visitor(NodeVisitor):
         return gen
 
     def visit_case_list(self,node,children):
-      pass #not done yet
+      #LPAR (list / assign) ws? stmts ws? RPAR case_list?
+      if not children[6]:
+         return ([children[1][0]],[children[3]])
+      v,s = children[6][0]
+      v = v + [children[1][0]]
+      s = s + [children[3]]
+      return (v,s)
 
     def visit_case(self,node,children):
-      def gen(self,node,children):
-         assert(False) #not done yet
+      #CASE LPAR identifier ws? case_list RPAR
+      def gen(ref=False,node=node,children=children):
+         v = children[2]()[1]
+         self.c.LOAD_FAST("#vars")
+         self.c.LOAD_CONST(v)
+         self.c.BINARY_SUBSCR()
+         
+         v,s = children[4]
+         dones = []
+         for i in range(len(v)):
+            self.c.DUP_TOP()
+            v[i]()
+            self.c.COMPARE_OP("==")
+            els = self.c.POP_JUMP_IF_FALSE()
+            self.c.LOAD_CONST(None)
+            s[i]()
+            self.c.ROT_TWO()
+            self.c.POP_TOP()
+            dones.append(self.c.JUMP_FORWARD())
+            els()
+         for d in dones:
+            d()
       return gen
 
     def visit_for(self,node,children):

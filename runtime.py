@@ -318,11 +318,6 @@ def rodPointY(l):
 
 def snapToGrid(v,g):
    ret = round(v/float(g))*g
-   if not ret:
-      print v 
-      print g
-      print v/g
-      assert(ret)
    return ret
 
 #dbCreateLabel(cv 4 1:1 "myLabel" "centerLeft" "R0" "roman" 2)
