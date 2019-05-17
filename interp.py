@@ -38,8 +38,6 @@ def flatten(items):
         else:
             yield x
 
-#TODO: not sure if lists still work
-
 grammar = r"""
      block       = ws? stmts
      procedure   = PROCEDURE LPAR ws? identifier LPAR ws? (identifier ws?)* string? ws? RPAR ws? stmts RPAR
@@ -387,7 +385,7 @@ class Visitor(NodeVisitor):
              #pdb.set_trace()
              children[0](ref=True)
              lde2 = self.c.stack_size
-             print node.text + ", Was: " + str(ref) 
+             #print node.text + ", Was: " + str(ref) 
              if lde2 - lde1 == 2:
                 self.c.BINARY_SUBSCR()
              #stack: obj
@@ -432,7 +430,7 @@ class Visitor(NodeVisitor):
           if children[2]:
              children[0](ref=False)
              children[2][0][1]()
-             print ref
+             #print ref
              if not ref:
                 self.c.BINARY_SUBSCR()
           else:
@@ -471,7 +469,7 @@ class Visitor(NodeVisitor):
 
     def visit_return(self,node,children):
         def gen(node=node,children=children):
-           print "return: " + str(self.c.stack_size)
+           #print "return: " + str(self.c.stack_size)
            if children[2]:
               children[2][0]()
            else:
@@ -483,7 +481,7 @@ class Visitor(NodeVisitor):
        def gen(ref=False,node=node):
           v = float(children[0].text)
           if children[1]:
-             print "suffix"
+             #print "suffix"
              t = children[1][0].text
              if t == "u":
                 v *= 1e-6
@@ -522,7 +520,7 @@ class Visitor(NodeVisitor):
 
     def visit_keywordfunc(self,node,children):
        def gen(ref=False,children=children):
-          print keywordfunc()
+          #print keywordfunc()
           self.c.LOAD_CONST(-4) #TODO
        return gen
 
@@ -583,8 +581,8 @@ class Visitor(NodeVisitor):
           self.c.CALL_FUNCTION(1)
           self.c.POP_TOP()  
 
-          print "l: " + str(len(self.locals[-1]))
-          print self.c.stack_size
+          #print "l: " + str(len(self.locals[-1]))
+          #print self.c.stack_size
 
           self.c.LOAD_CONST(None) #Nil is default return value
           children[5]()
@@ -638,7 +636,7 @@ class Visitor(NodeVisitor):
              #TODO collapse list of one item
  
              #dump(self.c.code())
-             print "list"
+             #print "list"
              #exit(0)
        return gen
 
@@ -745,7 +743,7 @@ class Visitor(NodeVisitor):
     def visit_if(self,node,children):
         #if = IF LPAR ws? assign ws?  (ifthen/ifstmt) ws? RPAR
         def gen(ref=False,node=node,children=children):
-           print children[5]
+           #print children[5]
            #exit(0)
            self.gen_cond(node,children[3],children[5][0][0],children[5][0][1])
         return gen
@@ -818,15 +816,15 @@ class Visitor(NodeVisitor):
 
 
         iter_obj() #get initial value
-        self.pprint("Init: ")        
+        #self.pprint("Init: ")        
 
         self.c.GET_ITER()
-        self.pprint("IterObj: ")        
+        #self.pprint("IterObj: ")        
 
         loop = self.c.here()
 
         fwd = self.c.FOR_ITER()
-        self.pprint("Iter: ")        
+        #self.pprint("Iter: ")        
 
         self.c.LOAD_FAST("#vars")
         self.c.LOAD_CONST(var)
@@ -858,7 +856,7 @@ class Visitor(NodeVisitor):
         def gen(ref=False,node=node,children=children):
             print not not children[1]
             if children[1]:
-               print "As: " + str(self.c.stack_size) 
+               #print "As: " + str(self.c.stack_size) 
                children[1][0][1]()  
                #stack: rhs
                self.c.DUP_TOP()
@@ -866,7 +864,7 @@ class Visitor(NodeVisitor):
                children[0](ref=True)
                #stack: rhs,rhs,obj,label
                self.c.STORE_SUBSCR()#TOS1[TOS] = TOS2.
-               print "Bs: " + str(self.c.stack_size) 
+               #print "Bs: " + str(self.c.stack_size) 
                #exit(0)
             else:
                children[0](ref=ref)
@@ -920,7 +918,7 @@ class Visitor(NodeVisitor):
            self.c.co_firstlineno = 1
 
            proc = children[3]()[1]
-           print proc
+           #print proc
            self.c.co_name = proc
 
            self.locals.append([])
@@ -966,7 +964,7 @@ class Visitor(NodeVisitor):
 
            self.locals = self.locals[:-1]  
  
-           print "ssr: " + str(self.c.stack_size)
+           #print "ssr: " + str(self.c.stack_size)
 
            self.c.RETURN_VALUE()
 
@@ -1007,32 +1005,6 @@ procedure( fibonacci(n "d")
 return(1)
 else return(fibonacci(n-1) + fibonacci(n-2))
 ) ;this is a comment
-)
-"""
-#   if(( n == 1 || n == 2) then
-#1
-#else fibonacci(n-1) + fibonacci(n-2)
-#)
-#)
-
-e = """
-procedure( trAdd( x y )
-	    when((mod((fix((M1W * 1000)) - fix((CwW * 1000))) 2) == 1) 
-		(tsCreateLabel "Round issue because Metal1/Contact is not symmetric structure\n" 
-		    list(0 0)
-		) 
-		printf("Round issue arise because Metal1/Contact is not symmetric structure\n")
-	    ) 
-) 
-"""
-
-e = """
-procedure( trGetBBoxHeight( pcCellView )
-(bagId = 1)
-(PP_A_3 = 0.0)
-  	    if((dbGet bagId "PP_A_3") then 
-		(PP_A_3 = (dbGet bagId "PP_A_3"))
-	    )
 )
 """
 
@@ -1103,8 +1075,8 @@ def pickle_code(co):
 copyreg.pickle(types.CodeType, pickle_code, unpickle_code)
 
 import runtime as runtime
-def init(props,layermap):
-   runtime.run(props,layermap,skill,run)
+def init(layermap):
+   runtime.run(layermap,skill,run)
 
 def cload(code,version):
    compiled = code.split(".")[0] + ".ilc"
@@ -1142,6 +1114,9 @@ def load_defaults(defaults):
          params[e[0]] = int(e[2])
    print params
 
+def load_props(props):
+   runtime.load_props(props)
+
 def apply_params():
    for k,v in runtime.bag.iteritems():
       if isinstance(v,dict):
@@ -1157,6 +1132,7 @@ def pcell_apply(name,value):
    runtime.bag[name]['value'] = value
    run(runtime.props['cbs'][name])
 
-def layout(function):
-   print skill.procedures[function]({'parameters' : params, 'lib' : {'name' : skill.variables['cdfgData']['id']['lib']['name']} , 'cell' : {'name' : skill.variables['cdfgData']['id']['cell']['name']}} )
+def layout(cell):
+   runtime.top = runtime.layout.create_cell(cell['cell_name'] + "@" + hex(abs(hash(frozenset(params.items()))))[2:12])
+   print skill.procedures[cell['func']]({'parameters' : params, 'lib' : {'name' : skill.variables['cdfgData']['id']['lib']['name']} , 'cell' : {'name' : skill.variables['cdfgData']['id']['cell']['name']}} )
 

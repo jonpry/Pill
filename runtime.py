@@ -2,7 +2,7 @@ import inspect
 import sys
 import os
 import re
-from props import *
+import props
 from tools import Lazy
 
 import klayout.db as db
@@ -12,7 +12,6 @@ import math
 
 layout = db.Layout()
 layout.dbu = .001
-top = layout.create_cell("nch")
 
 ######## These are implementations of Skill standard library functions
 def stringp(s):
@@ -338,6 +337,10 @@ def dbCreateRect(cell,layer,coord):
    print "createRect2: " + str(layer) + ", " + str(coord)
    return rodCreateRect(layer,coord[1][0] - coord[0][0],coord[1][1] - coord[0][1],coord[0])
 
+def dbCreateParamInstByMasterName(view, lib, cell, name, origin, orient, num=1, params=None, phys=False):
+   print "dbCreateParamInstByMasterName: " + str([locals()[arg] for arg in inspect.getargspec(dbCreateParamInstByMasterName).args])
+   return None
+
 def get_pname(s):
    print "get_pname: " + str(s)
    return s
@@ -382,7 +385,9 @@ def cons(a,b):
      return [a]
    return [a,b]
 
-def parseString(s,t):
+def parseString(s,t=None):
+   if not t:
+      return s.split()
    return s.split(t)
 
 def strcat(*a):
@@ -423,6 +428,9 @@ def close(f):
 def _gets(f):
    return f.readline()
 
+def substring(s,b,l):
+  return s[(b-1):][:l]
+
 def findFunc(name):
    def find(*args):
       print "********************" + name
@@ -437,19 +445,13 @@ def write():
    layout.write("foo.gds")
 
 layermap = {}
-def run(props_file,layermap_file,s,r):
+def run(layermap_file,s,r):
    global skill
    global interp
    global layermap
-   global props
-   global bag
 
    skill = s
    interp = r
-
-   props = load_props(props_file)
-   bag = props['props']
-
 
    f = open(layermap_file).read().split("\n")
    for l in f:
@@ -547,4 +549,13 @@ def run(props_file,layermap_file,s,r):
    skill.procedures['isFile'] = os.path.isfile
    skill.procedures['close'] = close
    skill.procedures['exit'] = exit
+   skill.procedures['substring'] = substring
+   skill.procedures['dbCreateParamInstByMasterName'] = dbCreateParamInstByMasterName
+
+def load_props(props_file):
+   global props
+   global bag
+
+   props = props.load_props(props_file)
+   bag = props['props']
 
