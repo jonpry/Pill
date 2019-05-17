@@ -13,6 +13,8 @@ import math
 layout = db.Layout()
 layout.dbu = .001
 
+bag = {}
+
 ######## These are implementations of Skill standard library functions
 def stringp(s):
    return isinstance(s,basestring)
@@ -110,14 +112,16 @@ def maplayer(layer):
       layer = [layer, "drawing"]
    if (layer[0],layer[1]) in layermap:
       l1 = layermap[ (layer[0],layer[1]) ]
+      print "layer: " + str(l1)
       l1 = layout.layer(l1[0], l1[1])  
       return l1
-   return None
+   return -1
 
 def rodCreateRectBase(layer,width,length,origin=[0,0],elementsX=1,spaceX=0,termIOType=None,termName=None,pin=None,cvId=None,beginOffset=0,endOffset=0,space=0):
    r = None
    l1 = maplayer(layer)
-   if l1:
+   if l1 >= 0:
+      print "found layer"
       r = db.DBox.new(origin[0],origin[1],origin[0]+width,origin[1]+length)
       r = top.shapes(l1).insert(r)
    return createObj(origin,width,length,[r])
@@ -251,8 +255,8 @@ def rodCreatePath(layer,width,pts,termIOType,termName,pin,subRect=None,name=""):
   print "createPath: " + str(pts) + ", layer: " + str(layer) + ", sub: " + str(subRect)
   r = None
   if (layer[0],layer[1]) in layermap:
-      l1 = layermap[ (layer[0],layer[1]) ]
-      l1 = layout.layer(l1[0], l1[1])
+      l1 = maplayer(layer)
+      assert(l1 >= 0)
       dpts = []
       for p in pts:
         dpts.append(db.DPoint.new(p[0],p[1]))  
@@ -551,6 +555,7 @@ def run(layermap_file,s,r):
    skill.procedures['exit'] = exit
    skill.procedures['substring'] = substring
    skill.procedures['dbCreateParamInstByMasterName'] = dbCreateParamInstByMasterName
+   skill.procedures['dbOpenCellViewByType'] = findFunc('dbOpenCellViewByType')
 
 def load_props(props_file):
    global props

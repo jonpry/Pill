@@ -1133,6 +1133,6 @@ def pcell_apply(name,value):
    run(runtime.props['cbs'][name])
 
 def layout(cell):
-   runtime.top = runtime.layout.create_cell(cell['cell_name'] + "@" + hex(abs(hash(frozenset(params.items()))))[2:12])
+   runtime.top = runtime.layout.create_cell(cell['cell_name'] + "@" + hex(abs(hash(frozenset(params.items()))))[2:12]) #TODO: FIXME: use hash that is stable across runs
    print skill.procedures[cell['func']]({'parameters' : params, 'lib' : {'name' : skill.variables['cdfgData']['id']['lib']['name']} , 'cell' : {'name' : skill.variables['cdfgData']['id']['cell']['name']}} )
 
