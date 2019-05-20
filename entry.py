@@ -12,8 +12,9 @@ layermap_file = "mytech.layermap"
 
 #These triplets can be extracted from 'dbDumpPcDefinePcell(dbOpenCellViewByType("@lib" "pch" "layout" "maskLayout") "/tmp/pch.il")'
 nch = {"func"     : "nch_layout",
-       "props"    : "nch_props.il", #File it output of "dbOpenBag(ddGetObj("@lib","@cell"))~>prop~>??"
+       "props"    : "nch_props.il", #File is output of "dbOpenBag(ddGetObj("@lib","@cell"))~>prop~>??"
        "cell_name": "nch",
+       "library"  : library
        "defaults" : """
   (foo string "0n")
   (bar string "180n")
@@ -37,26 +38,13 @@ interp.init(layermap_file)
 for c in codes:
   interp.cload(c,iversion)
 
-cell = nch
-
-#load defaults into interpreter
-interp.load_defaults(cell['defaults'])
-
-interp.load_props(cell['props'])
-
-#This initializes the pcell callback stuff
-interp.cdfg_init(library,cell['cell_name'])
-
 #Optionally change some parameters through pcell callbacks
 interp.pcell_apply('w',"500n")
 interp.pcell_apply('fingers',"3")
 
-#Must be called after pcell updates
-interp.apply_params()
-
 try:
    #Run it
-   interp.layout(cell)
+   interp.layout('nch')
 except:
    print interp.skill.variables
 

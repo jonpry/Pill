@@ -17,6 +17,7 @@ import hashlib
 import marshal
 import copyreg
 import pickle
+import context
 from tools import Lazy
 from tools import SkillList
 from types import FunctionType
@@ -201,8 +202,8 @@ class Visitor(NodeVisitor):
         for k,v in binary.iteritems():
            setattr(self, "visit_" + k, types.MethodType(lambda self, node, children, v=v: self.binexpr(node,children,v), self, Visitor))
       
-        unary = { "negexpr" : [0,Code.UNARY_NEGATIVE], "bnotexpr" : [0,Code.UNARY_INVERT], "notexpr" : [0,Code.UNARY_NOT],
-                  "dotexpr" : [0,Code.UNARY_NEGATIVE]}
+        unary = { "negexpr" : [0,Code.UNARY_NEGATIVE,False], "bnotexpr" : [0,Code.UNARY_INVERT,False], "notexpr" : [0,Code.UNARY_NOT,True],
+                  "dotexpr" : [0,Code.UNARY_NEGATIVE,False]}
 
         for k,v in unary.iteritems():
            setattr(self, "visit_" + k, types.MethodType(lambda self, node, children, v=v: self.unaexpr(node,children,v), self, Visitor))
@@ -271,6 +272,8 @@ class Visitor(NodeVisitor):
              exit(0)
           c(ref=ref)          
           if children[op[0]]:
+             if op[2]:
+               self.coerse()
              op[1](self.c)
        return gen
 
@@ -349,10 +352,13 @@ class Visitor(NodeVisitor):
 
           if not children[1]:
             return
+
+          self.coerse()
  
           ps = self.c.stack_size
           p2 = op[0](self.c)
           children[1][0][1]()
+          self.coerse()
           p1 = op[0](self.c)
           self.c.LOAD_CONST(None if op[1] else True)
           done = self.c.JUMP_ABSOLUTE()
@@ -363,6 +369,44 @@ class Visitor(NodeVisitor):
           assert(ps == self.c.stack_size and ref==False)
        return gen
 
+    #This interprets boolean according to skill 
+    #TODO empty list is treated as false
+    def coerse(self):
+       self.c.DUP_TOP()
+       self.c.LOAD_CONST(None)
+       self.c.COMPARE_OP("==")
+       not_done = self.c.POP_JUMP_IF_FALSE()
+       self.c.POP_TOP()
+       self.c.LOAD_CONST(False) 
+       done1 = self.c.JUMP_FORWARD()
+       not_done()
+       self.c.DUP_TOP()
+       self.c.LOAD_GLOBAL("isinstance")
+       self.c.ROT_TWO()
+       self.c.LOAD_GLOBAL("bool")
+       self.c.CALL_FUNCTION(2)
+       not_done = self.c.POP_JUMP_IF_FALSE()
+       done2 = self.c.JUMP_FORWARD()
+       not_done()
+       #self.c.DUP_TOP()
+       #self.c.LOAD_CONST("hasattr")
+       #self.c.ROT_TWO()
+       #self.c.LOAD_CONST("__len__")
+       #self.c.CALL_FUNCTION(2)
+       #not_done = self.c.POP_JUMP_IF_FALSE()
+       #self.c.LOAD_ATTR("__len__")
+       #empty_list = self.c.POP_JUMP_IF_FALSE()
+       #self.c.LOAD_CONST(True)
+       #done3 = self.c.JUMP_FORWARD()
+       #self.c.LOAD_CONST(False)
+       #done4 = self.c.JUMP_FORWARD()
+       #not_done()
+       self.c.POP_TOP()
+       self.c.LOAD_CONST(True)
+       done1()
+       done2()
+       #done3()
+       #done4()
     def visit_derefexpr(self,node,children):
        def gen(ref=False,node=node,children=children):
           self.do_deref(ref,node,children)
@@ -698,6 +742,7 @@ class Visitor(NodeVisitor):
         if loop:
            tgt = self.c.here()
         cond()
+        self.coerse()
         els = self.c.POP_JUMP_IF_FALSE()     
         #if code
         th_code()
@@ -1075,8 +1120,43 @@ def pickle_code(co):
 copyreg.pickle(types.CodeType, pickle_code, unpickle_code)
 
 import runtime as runtime
+
+cell_lib = {}
+def layout(cell,extra_params=None):
+   context.push()
+   loadcell(cell)
+   global pcell_updates
+   for name,value in pcell_updates:
+      context.bag[name]['value'] = value
+      run(context.props['cbs'][name])
+   pcell_updates = []
+
+   #Must be called after pcell updates
+   apply_params()
+
+   if extra_params:
+      assert(isinstance(extra_params,list))
+      for t in extra_params:
+         context.params[t[0]] = t[2]
+
+   print "inst params: " + str(context.params)
+
+
+   p = pickle.dumps(frozenset(context.params.items()))
+   h = hashlib.md5(p).hexdigest()
+   cell_name = current_cell['cell_name'] + "@" + h[:10]
+   
+   if cell_name in cell_lib:
+     context.pop()
+     return cell_lib[cell_name]
+   runtime.push_cell(cell_name)
+   print skill.procedures[current_cell['func']]({'parameters' : context.params, 'lib' : {'name' : skill.variables['cdfgData']['id']['lib']['name']} , 'cell' : {'name' : skill.variables['cdfgData']['id']['cell']['name']}} )
+   context.pop()
+   cell_lib[cell_name] = runtime.pop_cell()
+   return cell_lib[cell_name]
+
 def init(layermap):
-   runtime.run(layermap,skill,run)
+   runtime.run(layermap,skill,run,layout)
 
 def cload(code,version):
    compiled = code.split(".")[0] + ".ilc"
@@ -1097,7 +1177,6 @@ def cload(code,version):
       pickle.dump( p, open( compiled, "wb" ) )
 
 
-params = {}
 def load_defaults(defaults):
    for e in defaults.split("("):
       e = e.split(")")[0].split()
@@ -1105,34 +1184,50 @@ def load_defaults(defaults):
          continue
       v = None
       if e[1] == "string":
-         params[e[0]] = str(e[2].split("\"")[1]) 
+         context.params[e[0]] = str(e[2].split("\"")[1]) 
       elif e[1] == "boolean":
-         params[e[0]] = e[2] == "t"
+         context.params[e[0]] = e[2] == "t"
       elif e[1] == "float":
-         params[e[0]] = float(e[2])
+         context.params[e[0]] = float(e[2])
       elif e[1] == "int":
-         params[e[0]] = int(e[2])
-   print params
+         context.params[e[0]] = int(e[2])
 
 def load_props(props):
    runtime.load_props(props)
 
 def apply_params():
-   for k,v in runtime.bag.iteritems():
+   for k,v in context.bag.iteritems():
       if isinstance(v,dict):
          if 'value' in v:
-            params[k] = v['value']
+            context.params[k] = v['value']
 
 def cdfg_init(library,cell_name):
-   skill.variables['cdfgData'] = runtime.bag
+   skill.variables['cdfgData'] = context.bag
    skill.variables['cdfgData']['id'] = {'lib' : {'name' : library} , 'cell' : {'name' : cell_name}, 'libName' : library, 'cellName' : cell_name, 'name' : cell_name}
    skill.variables['cdfgData']['recall'] = {'value' : '0'}
 
-def pcell_apply(name,value):
-   runtime.bag[name]['value'] = value
-   run(runtime.props['cbs'][name])
 
-def layout(cell):
-   runtime.top = runtime.layout.create_cell(cell['cell_name'] + "@" + hex(abs(hash(frozenset(params.items()))))[2:12]) #TODO: FIXME: use hash that is stable across runs
-   print skill.procedures[cell['func']]({'parameters' : params, 'lib' : {'name' : skill.variables['cdfgData']['id']['lib']['name']} , 'cell' : {'name' : skill.variables['cdfgData']['id']['cell']['name']}} )
+def loadcell(cell):
+   global current_cell
+   #load defaults into interpreter
+   current_cell = cell_defs[cell]
+   context.params = {}
+   load_defaults(current_cell['defaults'])
+
+   if "props" in current_cell:
+      load_props(current_cell['props'])
+
+   #This initializes the pcell callback stuff
+   cdfg_init(current_cell['library'],current_cell['cell_name'])
+
+cell_defs = {}
+def load_cells(cells):
+   for cell in cells:
+      cell_defs[cell['cell_name']] = cell
+
+pcell_updates = []
+def pcell_apply(name,value):
+   global pcell_updates
+   pcell_updates.append((name,value))
+
 

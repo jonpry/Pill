@@ -9,11 +9,10 @@ import klayout.db as db
 import klayout.lib
 import tools
 import math
+import context
 
 layout = db.Layout()
 layout.dbu = .001
-
-bag = {}
 
 ######## These are implementations of Skill standard library functions
 def stringp(s):
@@ -39,9 +38,9 @@ def fix(a):
 
 def dbGet(a,b):
    print b
-   if b in bag:
-      print bag[b]
-      return bag[b]
+   if b in context.bag:
+      print context.bag[b]
+      return context.bag[b]
    else:
       return None
 
@@ -127,8 +126,19 @@ def rodCreateRectBase(layer,width,length,origin=[0,0],elementsX=1,spaceX=0,termI
    return createObj(origin,width,length,[r])
 
 rodsByName = {}
-def rodCreateRect(layer,width,length,origin=[0,0],name="",elementsX=1,elementsY=1,spaceX=0,spaceY=0,termIOType=None,termName=None,pin=None,cvId=None,beginOffset=0,endOffset=0,space=0):
-   print "createRect: " + str([locals()[arg] for arg in inspect.getargspec(rodCreateRect).args])
+def rodCreateRect(layer,width=0,length=0,origin=[0,0],name="",elementsX=1,elementsY=1,spaceX=0,spaceY=0,termIOType=None,
+                  termName=None,pin=None,cvId=None,beginOffset=0,endOffset=0,space=0,fromObj=None,bBox=None,pinLabel=None,pinLabelLayer=None):
+   if fromObj:
+      width=fromObj['width']
+      length=fromObj['length']
+      origin=fromObj['lL']
+
+   if bBox:
+     origin = bBox[0]
+     width = bBox[1][0] - bBox[0][0]
+     length = bBox[1][1] - bBox[0][1]
+      
+   print "rodCreateRect: " + str([locals()[arg] for arg in inspect.getargspec(rodCreateRect).args])
    objs = tools.DerefList()
    for x in range(elementsX):
       for y in range(elementsY):
@@ -142,10 +152,10 @@ def rodCreateRect(layer,width,length,origin=[0,0],name="",elementsX=1,elementsY=
    rodsByName[name] = objs
    return objs
 
-def rodTranslate(alignObj,delta):
-   m = { "lowerLeft" : "lL", "upperLeft" : "uL", "lowerRight" : "lR", "upperRight" : "uR", "lowerCenter" : "lC", 
-         "upperCenter" : "uC", "centerCenter" : "cC", "centerRight" : "cR", "centerLeft" : "cL"}
-   for h in m.values():
+def rodTranslate(alignObj,delta,internal=False):
+   m = ["lowerLeft","lL", "upperLeft", "uL", "lowerRight", "lR", "upperRight", "uR", "lC", 
+         "uC", "cC", "cR", "cL"]
+   for h in m:
       alignObj[h] = addPoint(alignObj[h],delta)
    print "ao: " + str(alignObj)
    shapes = alignObj['_shapes']
@@ -153,16 +163,15 @@ def rodTranslate(alignObj,delta):
    for s in shapes:
       print "s: " + str(s)
       s.transform(db.DTrans.new(float(delta[0]),float(delta[1])))
+   if not internal and len(alignObj['_masters']):
+      assert(False)
    for s in alignObj['_slaves']:
-      rodTranslate(s,delta)
+      rodTranslate(s,delta,True)
 
-def rodAlign(refObj,alignObj,alignHandle,refHandle,ySep=0,xSep=0):
-   #assert(ySep==0)
-   #assert(xSep==0)
+def rodAlign(alignObj,alignHandle,refObj=None,refHandle=None,ySep=0,xSep=0,refPoint=None):
    print "ref: " + str(refObj)
    print "alg: " + str(alignObj)
-   if not alignObj:
-      return
+
    m = { "lowerLeft" : "lL", "upperLeft" : "uL", "lowerRight" : "lR", "upperRight" : "uR", "lowerCenter" : "lC", 
          "upperCenter" : "uC", "centerCenter" : "cC", "centerRight" : "cR", "centerLeft" : "cL"}
    try:
@@ -174,12 +183,17 @@ def rodAlign(refObj,alignObj,alignHandle,refHandle,ySep=0,xSep=0):
    except:
       pass
 
-   delta = subPoint(refObj[refHandle],alignObj[alignHandle])
+   if refObj:
+      refPoint=refObj[refHandle]
+
+   delta = subPoint(refPoint,alignObj[alignHandle])
    delta = addPoint(delta,[xSep,ySep])
    print "Align: " + str(delta)
  
    rodTranslate(alignObj,delta)
-   refObj['_slaves'].append(alignObj)
+   if refObj:
+      alignObj['_masters'].append(refObj)
+      refObj['_slaves'].append(alignObj)
 
 def leftEdge(rod):
    return rod['lL'][0]
@@ -247,12 +261,23 @@ def createObj(origin,twidth,tlength,subs=None):
             'width' : twidth,
             'dbId' : {'pin' : None},
             '_shapes' : subs,
-            '_slaves' : []} 
+            '_slaves' : [],
+            '_masters' : [],
+            '_transform' : None} 
+   obj['lowerLeft'] = obj['lL']
+   obj['lowerRight'] = obj['lR']
+   obj['upperRight'] = obj['uR']
+   obj['upperLeft'] = obj['uL']
+   print "createObj: " + str(obj)
    return obj
 
-def rodCreatePath(layer,width,pts,termIOType,termName,pin,subRect=None,name=""):
+def rodCreatePath(layer,width,pts,termIOType=None,termName=None,pin=None,subRect=None,name="",justification=None):
   subs = []
-  print "createPath: " + str(pts) + ", layer: " + str(layer) + ", sub: " + str(subRect)
+  print "createPath: " + str(pts) + ", layer: " + str(layer) + ", sub: " + str(subRect) + ", just: " + justification
+
+  if justification:
+     pass #width=0 #TODO: all wrong
+ 
   r = None
   if (layer[0],layer[1]) in layermap:
       l1 = maplayer(layer)
@@ -269,9 +294,9 @@ def rodCreatePath(layer,width,pts,termIOType,termName,pin,subRect=None,name=""):
   twidth = bbox.width()
   tlength = bbox.height()
 
-  assert(len(pts) == 2)
-
   if subRect:
+    assert(len(pts) == 2)
+
     assert(env['distributeSingleSubRect'])
     assert(len(subRect)==1)
     for s in subRect:
@@ -306,6 +331,22 @@ def rodAddToY(a,b):
 def rodAddToX(a,b):
    return [a[0]+b,a[1]]
 
+
+def rodCreatePolygon(name,layer,fromObj=None):
+   print "rodCreatePolygon: \"" + name + "\", " + str(layer)
+   l1 = maplayer(layer)
+   assert(l1 >= 0)  
+   r = db.DPolygon.new(db.DBox.new(fromObj['lL'][0],fromObj['lL'][1],fromObj['uR'][0],fromObj['uR'][1]))
+   r = top.shapes(l1).insert(r)
+
+   bbox = r.dbbox()
+   origin = [bbox.p1.x,bbox.p1.y]
+   twidth = bbox.width()
+   tlength = bbox.height()
+   obj = createObj(origin,twidth,tlength,[r])
+   rodsByName[name] = obj
+   return obj
+
 def rodAssignHandleToParameter(**kwargs):
    print "assignHandle: " + str(kwargs)
    return None
@@ -314,6 +355,35 @@ def rodGetObj(i):
    print "rodGetObject: " + str(i)
    if i in rodsByName:
       return rodsByName[i]
+   s = i.split("/")
+   if len(s) > 1:
+     tx = []
+     print "rod subobject query: " + str(s)
+     cmap = rodsByName
+     inst = rodsByName[s[0]]
+     dbox = None
+     for e in s:
+        e = cmap[e]
+        cell = e['_shapes'][0]
+        if isinstance(cell,db.Instance):
+           cmap = rod_map[cell.cell.basic_name()]
+           tx.append(cell.dtrans)
+        dbox = e['_shapes'][0].dbbox()
+     #accumulate the transforms
+     total = db.DTrans()
+     for t in tx:
+        total = total * t
+     if not dbox:
+        write()
+        exit()
+     dbox = total.trans(dbox)
+     obj = createObj([dbox.p1.x,dbox.p1.y],dbox.width(),dbox.height(),inst['_shapes'])
+     obj['_transform'] = total
+     return obj
+   write()
+   assert(False)
+   exit(0)
+   print "****************getObject failed"
    return None
 
 def rodPointX(l):
@@ -337,12 +407,49 @@ def dbCreateLabel(cell,layer,origin,text,justification,orientation,font,height):
    top.shapes(l1).insert(t)
    print "createLabel: " + str([locals()[arg] for arg in inspect.getargspec(dbCreateLabel).args])
 
+def dbOpenCellViewByType(lib,cell,purpose,t):
+   print "dbOpenCellViewByType: " + cell
+   return cell
+
 def dbCreateRect(cell,layer,coord):
-   print "createRect2: " + str(layer) + ", " + str(coord)
+   print "dbCreateRect: " + str(layer) + ", " + str(coord)
    return rodCreateRect(layer,coord[1][0] - coord[0][0],coord[1][1] - coord[0][1],coord[0])
 
-def dbCreateParamInstByMasterName(view, lib, cell, name, origin, orient, num=1, params=None, phys=False):
-   print "dbCreateParamInstByMasterName: " + str([locals()[arg] for arg in inspect.getargspec(dbCreateParamInstByMasterName).args])
+def getRot(o):
+   if o == "R0":
+      return 0
+   if o == "R90":
+      return 1
+   if o == "R180":
+      return 2
+   if o == "R270":
+      return 3
+   assert(False)
+
+def dbCreateParamInst(view, cell, name, origin, orient, num=1, parm=None, phys=False):
+   print "dbCreateParamInst: \"" + name + "\", " + cell + ", " + str(origin) + "," + str(orient) 
+
+   assert(num==1) 
+
+   kobj = ilayout(cell,parm)
+   dcell = db.DCellInstArray.new(kobj.cell_index(),db.DTrans.new(getRot(orient),False,float(origin[0]),float(origin[1])))
+   dcell = top.insert(dcell)
+
+   bbox = dcell.dbbox()
+   origin = [bbox.p1.x,bbox.p1.y]
+   twidth = bbox.width()
+   tlength = bbox.height()
+
+   assert(twidth>0)
+   assert(tlength>0)
+
+   rodobj = createObj(origin,twidth,tlength,[dcell])
+   rodsByName[name] = rodobj
+   return rodobj
+
+def dbCreateParamInstByMasterName(view, lib, cell, purpose, name, origin, orient, num=1, params=None, phys=False):
+   print "paraminst"
+   dbCreateParamInst(view,cell,name,origin,orient,num,params,phys)
    return None
 
 def get_pname(s):
@@ -381,6 +488,11 @@ def isCallable(l):
    return not not skill.procedures[l.expr]
 
 def cons(a,b):
+   if isinstance(a,Lazy):
+     a = a.deref()
+   if isinstance(b,Lazy):
+     b = b.deref()
+
    if isinstance(a,list):
      return a+b
    if isinstance(b,list):
@@ -421,6 +533,8 @@ def typep(v):
 def eval(v):
    if isinstance(v,Lazy):
       return interp(v.expr)
+   if isinstance(v,basestring):
+      return skill.variables[v]
    return v
 
 def ddGetObjReadPath(o):
@@ -449,13 +563,12 @@ def write():
    layout.write("foo.gds")
 
 layermap = {}
-def run(layermap_file,s,r):
-   global skill
-   global interp
-   global layermap
+def run(layermap_file,s,r,l):
+   global skill, interp, layermap, ilayout
 
    skill = s
    interp = r
+   ilayout = l
 
    f = open(layermap_file).read().split("\n")
    for l in f:
@@ -520,7 +633,7 @@ def run(layermap_file,s,r):
    skill.procedures['rodAddPoints'] = rodAddPoints
    skill.procedures['rodAlign'] = rodAlign
    skill.procedures['rodCreatePath'] = rodCreatePath
-   skill.procedures['rodCreatePolygon'] = findFunc('rodCreatePolygon')
+   skill.procedures['rodCreatePolygon'] = rodCreatePolygon
    skill.procedures['get_pname'] = get_pname
    skill.procedures['concat'] = concat
    skill.procedures['rexMatchp'] = rexMatchp
@@ -555,12 +668,31 @@ def run(layermap_file,s,r):
    skill.procedures['exit'] = exit
    skill.procedures['substring'] = substring
    skill.procedures['dbCreateParamInstByMasterName'] = dbCreateParamInstByMasterName
-   skill.procedures['dbOpenCellViewByType'] = findFunc('dbOpenCellViewByType')
+   skill.procedures['dbOpenCellViewByType'] = dbOpenCellViewByType
+   skill.procedures['dbCreateParamInst'] = dbCreateParamInst
 
 def load_props(props_file):
-   global props
-   global bag
+   context.props = props.load_props(props_file)
+   context.bag = context.props['props']
 
-   props = props.load_props(props_file)
-   bag = props['props']
+top_stack = []
+rod_stack = []
+rod_map = {}
+top = None
+def push_cell(h):
+   global top, top_stack, rodsByName, rod_stack
+   top_stack.append(top)
+   top = layout.create_cell(h) 
+   rod_stack.append(rodsByName)
+   rodsByName = {}
 
+def pop_cell():
+   global top, top_stack, rodsByName, rod_stack, rod_map   
+   cell = top
+   oldRod = rodsByName
+   top = top_stack[-1]
+   top_stack = top_stack[:-1]
+   rodsByName = rod_stack[-1]
+   rod_stack = rod_stack[:-1] 
+   rod_map[cell.basic_name()] = oldRod  
+   return cell
