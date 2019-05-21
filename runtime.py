@@ -10,6 +10,7 @@ import klayout.lib
 import tools
 import math
 import context
+import geom
 
 layout = db.Layout()
 layout.dbu = .001
@@ -34,7 +35,9 @@ def mod(a,b):
    return a % b
 
 def fix(a):
-   return int(a)
+   r = int(math.floor(a))
+   print "floor: " + str(a) + "=" + str(r)
+   return r
 
 def dbGet(a,b):
    print b
@@ -163,7 +166,7 @@ def rodTranslate(alignObj,delta,internal=False):
    for s in shapes:
       print "s: " + str(s)
       s.transform(db.DTrans.new(float(delta[0]),float(delta[1])))
-   if not internal and len(alignObj['_masters']):
+   if (not internal) and len(alignObj['_masters']):
       assert(False)
    for s in alignObj['_slaves']:
       rodTranslate(s,delta,True)
@@ -202,10 +205,10 @@ def topEdge(rod):
    return rod['uR'][1]
 
 def bottomEdge(rod):
-   return rod['lR'][1]
+   return rod['lL'][1]
 
 def rightEdge(rod):
-   return rod['lR'][0]
+   return rod['uR'][0]
 
 def addPoint(a,b):
   return [a[0]+b[0],a[1]+b[1]]
@@ -271,13 +274,10 @@ def createObj(origin,twidth,tlength,subs=None):
    print "createObj: " + str(obj)
    return obj
 
-def rodCreatePath(layer,width,pts,termIOType=None,termName=None,pin=None,subRect=None,name="",justification=None):
+def rodCreatePath(layer,width,pts,termIOType=None,termName=None,pin=None,subRect=None,name="",justification="center"):
   subs = []
   print "createPath: " + str(pts) + ", layer: " + str(layer) + ", sub: " + str(subRect) + ", just: " + justification
 
-  if justification:
-     pass #width=0 #TODO: all wrong
- 
   r = None
   if (layer[0],layer[1]) in layermap:
       l1 = maplayer(layer)
@@ -285,7 +285,7 @@ def rodCreatePath(layer,width,pts,termIOType=None,termName=None,pin=None,subRect
       dpts = []
       for p in pts:
         dpts.append(db.DPoint.new(p[0],p[1]))  
-      r = db.DPath.new(dpts,width)
+      r = geom.Path(dpts,width,justification)
       r = top.shapes(l1).insert(r)
       subs.append(r)
 
@@ -377,8 +377,11 @@ def rodGetObj(i):
         write()
         exit()
      dbox = total.trans(dbox)
-     obj = createObj([dbox.p1.x,dbox.p1.y],dbox.width(),dbox.height(),inst['_shapes'])
+     obj = createObj([dbox.p1.x,dbox.p1.y],dbox.width(),dbox.height())
+     obj['_slaves'].append(inst)
+     inst['_masters'].append(obj)
      obj['_transform'] = total
+     rodsByName[i] = obj
      return obj
    write()
    assert(False)
@@ -537,6 +540,10 @@ def eval(v):
       return skill.variables[v]
    return v
 
+def writeout(a):
+   write()
+   exit(0)
+
 def ddGetObjReadPath(o):
    return "."
 
@@ -544,7 +551,10 @@ def close(f):
    f.close()
 
 def _gets(f):
-   return f.readline()
+   s = f.readline()
+   if s == "":
+      return None
+   return s
 
 def substring(s,b,l):
   return s[(b-1):][:l]
@@ -670,6 +680,7 @@ def run(layermap_file,s,r,l):
    skill.procedures['dbCreateParamInstByMasterName'] = dbCreateParamInstByMasterName
    skill.procedures['dbOpenCellViewByType'] = dbOpenCellViewByType
    skill.procedures['dbCreateParamInst'] = dbCreateParamInst
+   skill.procedures['writeout'] = writeout #for debugging
 
 def load_props(props_file):
    context.props = props.load_props(props_file)
