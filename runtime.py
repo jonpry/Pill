@@ -11,6 +11,7 @@ import tools
 import math
 import context
 import geom
+import uuid
 
 layout = db.Layout()
 layout.dbu = .001
@@ -124,9 +125,9 @@ def rodCreateRectBase(layer,width,length,origin=[0,0],elementsX=1,spaceX=0,termI
    l1 = maplayer(layer)
    if l1 >= 0:
       print "found layer"
-      r = db.DBox.new(origin[0],origin[1],origin[0]+width,origin[1]+length)
+      r = db.DBox.new(origin[0],origin[1],origin[0]+width,origin[1]+length).to_itype(0.001)
       r = top.shapes(l1).insert(r)
-   return createObj(origin,width,length,[r])
+   return createObj(subs=[r])
 
 rodsByName = {}
 def rodCreateRect(layer,width=0,length=0,origin=[0,0],name="",elementsX=1,elementsY=1,spaceX=0,spaceY=0,termIOType=None,
@@ -155,7 +156,7 @@ def rodCreateRect(layer,width=0,length=0,origin=[0,0],name="",elementsX=1,elemen
    rodsByName[name] = objs
    return objs
 
-def rodTranslate(alignObj,delta,internal=False):
+def rodTranslate(alignObj,delta,internal=False,done=None):
    m = ["lowerLeft","lL", "upperLeft", "uL", "lowerRight", "lR", "upperRight", "uR", "lC", 
          "uC", "cC", "cR", "cL"]
    for h in m:
@@ -163,13 +164,19 @@ def rodTranslate(alignObj,delta,internal=False):
    print "ao: " + str(alignObj)
    shapes = alignObj['_shapes']
    print "shapes: " + str(shapes)
+   if not internal:
+      done = set()
    for s in shapes:
       print "s: " + str(s)
       s.transform(db.DTrans.new(float(delta[0]),float(delta[1])))
-   if (not internal) and len(alignObj['_masters']):
-      assert(False)
+   done.add(alignObj['_id'])
+ 
+   for m in alignObj['_masters']:
+      if not m['_id'] in done:
+         rodTranslate(m,delta,True,done)
    for s in alignObj['_slaves']:
-      rodTranslate(s,delta,True)
+      if not s['_id'] in done:
+         rodTranslate(s,delta,True,done)
 
 def rodAlign(alignObj,alignHandle,refObj=None,refHandle=None,ySep=0,xSep=0,refPoint=None):
    print "ref: " + str(refObj)
@@ -246,9 +253,26 @@ def rodFillBBoxWithRects(layer,fillBBox,width,length,spaceX,spaceY,gap="distribu
       rects = rects + rodCreateRect(layer,width,length,p)['_shapes']
       p[1] += spaceY + length
 
-   return createObj(origin,bwidth,blength,rects)
+   return createObj(subs=rects)
 
-def createObj(origin,twidth,tlength,subs=None):
+def createObj(dbox=None,subs=None):
+   assert(dbox or subs)
+   if subs:
+      for s in subs:
+         if dbox:
+            dbox = dbox + s.dbbox
+         else:
+            dbox = s.dbbox()
+
+   ibox = dbox.to_itype(0.001)
+   dbox = ibox.to_dtype(0.001)
+   origin = [dbox.p1.x,dbox.p1.y]
+   twidth = (ibox.p2.x-ibox.p1.x)*0.001
+   tlength = (ibox.p2.y-ibox.p1.y)*0.001
+ 
+   if twidth > .09999999 and twidth < .1:
+      print "%.20e %.20e %.20e %d %d %.20e %.20e" % (twidth, dbox.p2.x, dbox.p1.x, ibox.p2.x, ibox.p1.x, 105*.001, 5*.001)
+      assert(False)
    if not subs:
        subs = []
    obj = {  "lL" : [origin[0],origin[1]], 
@@ -266,7 +290,8 @@ def createObj(origin,twidth,tlength,subs=None):
             '_shapes' : subs,
             '_slaves' : [],
             '_masters' : [],
-            '_transform' : None} 
+            '_transform' : None,
+            '_id' : uuid.uuid1()} 
    obj['lowerLeft'] = obj['lL']
    obj['lowerRight'] = obj['lR']
    obj['upperRight'] = obj['uR']
@@ -288,11 +313,6 @@ def rodCreatePath(layer,width,pts,termIOType=None,termName=None,pin=None,subRect
       r = geom.Path(dpts,width,justification)
       r = top.shapes(l1).insert(r)
       subs.append(r)
-
-  bbox = r.dbbox()
-  origin = [bbox.p1.x,bbox.p1.y]
-  twidth = bbox.width()
-  tlength = bbox.height()
 
   if subRect:
     assert(len(pts) == 2)
@@ -316,7 +336,7 @@ def rodCreatePath(layer,width,pts,termIOType=None,termName=None,pin=None,subRect
           subs = subs + e['_shapes']
 
 
-  obj = createObj(origin,twidth,tlength,subs)
+  obj = createObj(subs=subs)
 
   print "Path: " + str(obj)
   rodsByName[name] = obj
@@ -339,11 +359,7 @@ def rodCreatePolygon(name,layer,fromObj=None):
    r = db.DPolygon.new(db.DBox.new(fromObj['lL'][0],fromObj['lL'][1],fromObj['uR'][0],fromObj['uR'][1]))
    r = top.shapes(l1).insert(r)
 
-   bbox = r.dbbox()
-   origin = [bbox.p1.x,bbox.p1.y]
-   twidth = bbox.width()
-   tlength = bbox.height()
-   obj = createObj(origin,twidth,tlength,[r])
+   obj = createObj(subs=[r])
    rodsByName[name] = obj
    return obj
 
@@ -362,14 +378,21 @@ def rodGetObj(i):
      cmap = rodsByName
      inst = rodsByName[s[0]]
      dbox = None
+     got_shape=False
      for e in s:
         e = cmap[e]
         cell = e['_shapes'][0]
         if isinstance(cell,db.Instance):
            cmap = rod_map[cell.cell.basic_name()]
            tx.append(cell.dtrans)
+        else:
+           got_shape=True
         dbox = e['_shapes'][0].dbbox()
      #accumulate the transforms
+     if not got_shape:
+        print dbox
+        dbox.p1 = db.DPoint.new(0,0) #If only have a cell, then all stuff relative to origin
+        dbox.p2 = dbox.p1
      total = db.DTrans()
      for t in tx:
         total = total * t
@@ -377,7 +400,7 @@ def rodGetObj(i):
         write()
         exit()
      dbox = total.trans(dbox)
-     obj = createObj([dbox.p1.x,dbox.p1.y],dbox.width(),dbox.height())
+     obj = createObj(dbox=dbox)
      obj['_slaves'].append(inst)
      inst['_masters'].append(obj)
      obj['_transform'] = total
@@ -438,15 +461,7 @@ def dbCreateParamInst(view, cell, name, origin, orient, num=1, parm=None, phys=F
    dcell = db.DCellInstArray.new(kobj.cell_index(),db.DTrans.new(getRot(orient),False,float(origin[0]),float(origin[1])))
    dcell = top.insert(dcell)
 
-   bbox = dcell.dbbox()
-   origin = [bbox.p1.x,bbox.p1.y]
-   twidth = bbox.width()
-   tlength = bbox.height()
-
-   assert(twidth>0)
-   assert(tlength>0)
-
-   rodobj = createObj(origin,twidth,tlength,[dcell])
+   rodobj = createObj(subs=[dcell])
    rodsByName[name] = rodobj
    return rodobj
 
