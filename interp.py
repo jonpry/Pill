@@ -814,15 +814,51 @@ class Visitor(NodeVisitor):
          dones = []
          for i in range(len(v)):
             self.c.DUP_TOP()
+            #input,input
             v[i]()
+            #input,input,case
+            self.c.DUP_TOP()
+            #input,input,case,case
+            self.c.ROT_THREE()
+            #input,case,input,case
             self.c.COMPARE_OP("==")
-            els = self.c.POP_JUMP_IF_FALSE()
+            #input,case,comp
+            run = self.c.POP_JUMP_IF_TRUE()
+            self.c.DUP_TOP()
+            #input,case,case
+            self.c.LOAD_GLOBAL("isinstance")
+            self.c.ROT_TWO()
+            self.c.LOAD_GLOBAL("list")
+            self.c.CALL_FUNCTION(2)
+            #input,case,islist
+            norun = self.c.POP_JUMP_IF_FALSE()
+            #input,case
+            self.c.ROT_TWO()
+            #case,input
+            self.c.DUP_TOP()
+            #case,input,input
+            self.c.ROT_THREE()
+            #input,case,input
+            self.c.ROT_TWO()
+            #input,input,case
+            self.c.COMPARE_OP("in")
+            #input,in
+            norun2 = self.c.POP_JUMP_IF_FALSE()
+            self.c.LOAD_CONST(None)
+            #input,none
+            #self.c.JUMP_ABSOLUTE(run)
+            
+            run()
+            self.c.POP_TOP()
             self.c.LOAD_CONST(None)
             s[i]()
             self.c.ROT_TWO()
             self.c.POP_TOP()
             dones.append(self.c.JUMP_FORWARD())
-            els()
+            norun()
+            self.c.POP_TOP()
+            norun2()
+
          for d in dones:
             d()
       return gen
