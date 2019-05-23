@@ -43,7 +43,7 @@ grammar = r"""
      block       = ws? stmts
      procedure   = PROCEDURE LPAR ws? identifier LPAR ws? (identifier ws?)* string? ws? RPAR ws? stmts RPAR
      identifier  = !((reserved) (ws/RPAR/EQU/PLUS/MINUS/RBR/BANG/TILDA/LT/GT/DOT/LPAR)) ~"[a-zA-Z_][a-zA-Z_0-9]*"
-     reserved    = IF / ELSE / THEN / FOR / PROCEDURE / WHEN / LET / UNLESS / CASE / NIL / FOREACH / SETOF / EXISTS / TAU / RETURN / COND / WHILE
+     reserved    = IF / ELSE / THEN / FOR / PROCEDURE / WHEN / LET / UNLESS / CASE / NIL / FOREACH / SETOF / EXISTS / TAU / RETURN / COND / WHILE 
      list        = LPAR (listelem ws?)* RPAR
      keyword_func= LPAR func_name ws? ((Q identifier ws?)? ororexpr ws?)+ RPAR
      func_call2  = func_name LPAR ws? ((Q identifier ws?)? ororexpr ws?)+ RPAR
@@ -57,6 +57,7 @@ grammar = r"""
      when        = WHEN LPAR ws? assign ws? stmts RPAR
      unless      = UNLESS LPAR ws? assign ws? stmts RPAR
      case        = CASE LPAR identifier ws? case_list RPAR
+     exists      = EXISTS LPAR identifier ws? ororexpr ws? assign RPAR
      foreach     = FOREACH LPAR identifier ws? assign ws? stmts RPAR
      for         = FOR LPAR identifier ws? assign ws? assign ws? stmts RPAR
      cond        = COND LPAR (LPAR assign ws? stmts ws? RPAR)+ RPAR
@@ -65,11 +66,11 @@ grammar = r"""
      return      = RETURN LPAR assign? RPAR
      number      = ~'\d+\.?\d*' ~"[u]|e-?[0-9]+"?
      string      = '"' ~r'\\.|[^\"\\]*'* '"'
-     stmt        = procedure / proglet / if / case / when / unless / while / foreach / for / return / assign / cond / list
+     stmt        = procedure / proglet / if / case / when / unless / while / foreach / for / return / assign / cond / exists /list
      stmts       = stmt ws? stmts?
       
 
-     value      = (keyword_func/func_call2/if/identifier/number/string/NIL/TAU) ws?
+     value      = (keyword_func/func_call2/if/exists/identifier/number/string/NIL/TAU) ws?
 
  
      vexpr      = (LPAR assign RPAR) / value
@@ -863,6 +864,29 @@ class Visitor(NodeVisitor):
             d()
       return gen
 
+    def visit_exists(self,node,children):
+       #EXISTS LPAR identifier ws? ororexpr ws? assign RPAR
+       def gen(ref=False,node=node,children=children):
+          def pred(node=node,children=children):
+             self.c.POP_TOP()
+             self.pprint("v: ")
+             children[6]()
+             self.c.DUP_TOP()
+             self.coerse()
+             fwd = self.c.POP_JUMP_IF_FALSE()
+             self.c.BUILD_LIST(1)
+             self.pprint("pred: ")
+             ret=self.c.JUMP_FORWARD()   
+             fwd()
+             self.c.POP_TOP()
+             self.c.LOAD_CONST(None)
+             return ret
+          children[4]()
+          self.pprint("Range: ")
+          self.c.POP_TOP()
+          self.gen_loop(children[2]()[1],children[4],pred,rtrue=False)
+       return gen
+
     def visit_for(self,node,children):
        # FOR LPAR identifier ws? ororexpr ws? ororexpr ws? stmts RPAR
        def gen(node=node,children=children):
@@ -887,7 +911,7 @@ class Visitor(NodeVisitor):
         self.c.CALL_FUNCTION(1)
         self.c.POP_TOP()
 
-    def gen_loop(self,var,iter_obj,stmts):
+    def gen_loop(self,var,iter_obj,stmts,rtrue=True):
         #print "ss: " + str(self.c.stack_size)
         self.c.LOAD_GLOBAL('PushVars')
         self.c.LOAD_CONST(var)
@@ -913,18 +937,28 @@ class Visitor(NodeVisitor):
         self.c.LOAD_CONST(None)
         #do statements
 
-        stmts() 
+        done = stmts() 
 
         self.c.POP_TOP()
         self.c.JUMP_ABSOLUTE(loop)
         fwd()
-   
+        fwd = self.c.JUMP_FORWARD()
+
+        if done:
+          done()
+          self.c.ROT_THREE()
+          self.c.POP_TOP()    
+          self.c.POP_TOP()    
+
+        fwd()
+
         self.c.LOAD_GLOBAL('PopVars')
         self.c.LOAD_CONST(var)
         self.c.BUILD_LIST(1)
         self.c.CALL_FUNCTION(1,0)    
-        self.c.POP_TOP()    
-        self.c.LOAD_CONST(True) #foralways returns true
+        if rtrue:
+           self.c.POP_TOP()    
+           self.c.LOAD_CONST(True) #foralways returns true
 
     def visit_foreach(self,node,children):
        # FOREACH LPAR identifier ws? ororexpr ws? stmts RPAR
@@ -1247,7 +1281,7 @@ def loadcell(cell):
    global current_cell
    #load defaults into interpreter
    current_cell = cell_defs[cell]
-   context.params = {}
+   context.params = tools.DerefDict()
    load_defaults(current_cell['defaults'])
 
    if "props" in current_cell:

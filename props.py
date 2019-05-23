@@ -8,7 +8,7 @@ grammar = r"""
      listelem   = (db/number/identifier/string/list) ws?
 
      db          = "db" COLON hex
-     identifier  = ~"[a-zA-Z_][a-zA-Z_0-9]*" / ~r'\\[:,][0-9a-zA-Z]'
+     identifier  = ~"[a-zA-Z_][a-zA-Z_0-9]*" / ~r'\\[:,$][0-9a-zA-Z]'
      number      = float / integer / hex
      float       = ~'\d*\.\d*'
      hex         = "0x" ~'[0-9a-f]+'

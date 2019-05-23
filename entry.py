@@ -14,7 +14,7 @@ layermap_file = "mytech.layermap"
 nch = {"func"     : "nch_layout",
        "props"    : "nch_props.il", #File is output of "dbOpenBag(ddGetObj("@lib","@cell"))~>prop~>??"
        "cell_name": "nch",
-       "library"  : library
+       "library"  : library,
        "defaults" : """
   (foo string "0n")
   (bar string "180n")

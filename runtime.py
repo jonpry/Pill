@@ -695,6 +695,8 @@ def run(layermap_file,s,r,l):
    skill.procedures['dbCreateParamInstByMasterName'] = dbCreateParamInstByMasterName
    skill.procedures['dbOpenCellViewByType'] = dbOpenCellViewByType
    skill.procedures['dbCreateParamInst'] = dbCreateParamInst
+   skill.procedures['dbCreateInst'] = findFunc('dbCreateInst')
+   skill.procedures['dbFlattenInst'] = findFunc('dbFlattenInst')
    skill.procedures['writeout'] = writeout #for debugging
 
 def load_props(props_file):
