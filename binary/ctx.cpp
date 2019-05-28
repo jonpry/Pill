@@ -55,6 +55,78 @@ const char *codeNames[] = {"Inline Literal", "FuncCall", "KCompile", "SCompile",
 
                            "" };
 
+uint8_t codeTypes[] = {0x11, 0xf, 0x13, 0x13, 
+                      0x20, 0x9, 0x11, 0x11, 
+                      0x20, 0x20, 0x21, 0x21, 
+                      0x21, 0x20, 0x20, 0x20, 
+
+                      0x22, 0x22, 0x22, 0x22, 
+                      0x22, 0x22, 0x22, 0x22, 
+                      0x22, 0x22, 0x11, 0x19, 
+                      0x1b, 0x22, 0x16, 0x16, 
+
+                      0x14, 0x15, 0x15, 0x11, 
+                      0x12, 0x12, 0x7, 0x12,
+                      0x18, 0x23, 0xb, 0xb, 
+                      0xb, 0x22, 0x23, 0x22, 
+
+                      0x22, 0x22, 0x22, 0x22, 
+                      0x22, 0x22, 0x22, 0x22, 
+                      0x22, 0x22, 0x22, 0x22, 
+                      0x1, 0x6, 0x11, 0x15, 
+ 
+                      0x1a, 0x1a, 0x3, 0x6, 
+                      0x1d, 0x1d, 0x1d, 0x1e, 
+                      0x1e, 0x1d, 0x1d, 0x1d, 
+                      0x1e, 0x1f, 0x1f, 0x11, 
+
+                      0xf, 0xf, 0xa, 0xa, 
+                      0xf, 0xf, 0x6, 0xd, 
+                      0x0, 0x0, 0x10, 0x10, 
+                      0x11, 0x17, 0x11, 0x1c, 
+
+                      0x1a, 0x1a, 0x3, 0x6, 
+                      0x1d, 0x1d, 0x1d, 0x1e, 
+                      0x1e, 0x1d, 0x1d, 0x1d, 
+                      0x1e, 0x1f, 0x1f, 0x11, 
+
+                      0xf, 0xf, 0xa, 0xa, 
+                      0xf, 0xf, 0x6, 0xd, 
+                      0x0, 0x0, 0x10, 0x10, 
+                      0x11, 0x17, 0x11, 0x1c};
+
+const char* atoms[]= {"dummy", "dummy" , "dummy" , "call" , 
+                     "call" , "call" , "call" , "call" , 
+                     "call" , "dummy" , "if" , "then" , 
+                     "else" , "while" , "when" , "unless" , 
+
+                     "case" , "caseq" , "decode" , "cond" , 
+                     "and" , "or" , "for" , "foreach" , 
+                     "forall" , "setof" , "exists" , "prog1" , 
+                     "prog2" , "progn" , "prog" , "go" , 
+
+                     "setq" , "quote" , "defun" , "defvar" , 
+                     "def" , "lambda" , "nlambda" , "macro" , 
+                     "procedure" , "nprocedure" , "mprocedure" , "eval" , 
+                     "getq" , "getqq" , "putpropq" , "putpropqq" , 
+
+                     "predecrement" , "preincrement" , "postdecrement" , "postincrement" , 
+                     "setqbitfield1" , "setqbitfield" , "declare" , "dummy" , 
+                     "dummy" , "dummy" , "defprop" , "getsgq" , 
+                     "setsgq" , "sstatus" , "pp" , "fscanf" , 
+
+                     "scanf" , "sprintf" , "toplevelset" , "errset" , 
+                     "dummy" , "dummy" , "define" , "body" , 
+                     "local" , "recargs" , "seqargs" , "begin" , 
+                     "letseq" , "letrec" , "let" , "dummy" , 
+
+                     "do" , "dummy" , "dummy" , "imply" , 
+                     "theenvironment" , "break" , "export" , "named" , 
+                     "dummy" , "dummy" , "dummy" , "kcompile" , 
+                     "sfor" , "sforeach" , "sforall" , "ssetof" , 
+
+                     "sexists" , "scompile" , "compilein"};
+
 
 void print_obj(uint64_t old_adr){
    old_adr &= ~0x7ul;
@@ -91,6 +163,60 @@ void print_obj(uint64_t old_adr){
          printf("Type: %d\n", typmap[PAGE(old_adr)]);
          assert(false);
    }
+}
+
+void printins(uint64_t ofst){
+        uint64_t op=*(uint64_t*)&buf[ofst];
+        uint8_t code = op & 0xFF;
+        uint64_t u48 = op >> 16;
+        uint32_t u32 = u48;
+        uint64_t u56 = op >> 8;
+        if(pgmap.find(PAGE(op)) != pgmap.end()){
+              printf("Literal: 0x%lx, ", op);
+              print_obj(op);
+              printf("\n");
+              return;
+        }
+
+        if(code & 1 == 0){
+           printf("Load literal\n");
+           if(pgmap.find(PAGE(op)) != pgmap.end()){
+              print_obj(op);
+              printf("\n");
+           }else{
+              assert(false);
+           }
+           return;
+        }
+        if(code & 0xc0 == 0xc0){
+              printf("Push + ");
+           }
+           if (code & 0x80 == 0) {
+             code &= 0x7f;
+           } else {
+             code &= 0xbf;
+        }
+        printf("%s\n", codeNames[code>>1]);
+
+        uint8_t type = codeTypes[code>>1];
+  
+        if (type == 0x1c) {
+          printf("%d\n",u32);
+        }else if(type == 0x10){
+          printf("PCall 0x%lX 0x%X %s\n", u56&0xff, u32, atoms[(u56&0xff)>>1]);
+        }else if(type == 9 || type == 0x12 || type == 7 || type == 0x20 || type == 8 || type == 0x21 || type == 0x11 || type == 0x22){
+          uint8_t atom = u56;
+          printf("Atom %d %s\n", atom, atoms[atom]);
+        }else if(type == 0x1d){
+            //printf("0x%X 0x%lX 0x%X 0x%lX\n",type,u56&0xFF, code, u48); 
+            printins(ofst+u32*8);
+        }else if(type == 0x1a){
+            //Load true
+        }else if(type == 0xf){
+            //Lots of different types of calls
+        }else{ 
+            printf("Ukn: 0x%X 0x%lX 0x%X 0x%lX\n",type,u56&0xFF, code, u48); 
+        }
 }
 
 int main(){
@@ -232,58 +358,7 @@ int main(){
    uint64_t arytab = ofst;
 #if 1
    for(uint32_t i=0; i < narrays/8; i++){
-      uint64_t op=*(uint64_t*)&buf[ofst];
-    if(true){
-        uint8_t code = op & 0xFF;
-        uint64_t u48 = op >> 16;
-        uint64_t u56 = op >> 8;
-        if(code & 1 == 0){
-           printf("Load literal\n");
-           if(pgmap.find(PAGE(op)) != pgmap.end()){
-              print_obj(op);
-              printf("\n");
-           }else{
-              assert(false);
-           }
-        }else{
-           if(code & 0xc0 == 0xc0){
-              printf("Push + ");
-           }
-           if (code & 0x80 == 0) {
-             code &= 0x7f;
-           } else {
-             code &= 0xbf;
-           }
-           //printf("Op: %ld, %ld, %ld\n", sizeof(codeNames)/8, (op & 0xFF)>>0, (op & 0xFF)>>1);
-           printf("%s\n", codeNames[code>>1]);
-        }
-#if 0
-        switch(op&0xFF){
-            //Lots of unknowns here
-            case 0x9:  printf("get\n"); break;
-            case 0xb:  printf("putProp\n"); break;
-            case 0x25: printf("For each\n"); break;
-            case 0x1f: printf("set\n"); break;
-            case 0xcd:
-            case 0xf5: //It seems these are different calling conventions
-            case 0x8d: //this one might get the reference
-            case 0xe1: printf("Call\n"); break;
-            case 0x8b: printf("Load sym\n"); break;
-            case 0xcb: printf("Load pcrel\n"); break;
-            //These are kind of done
-            case 0xef: printf("Ins: pc+=u56\n"); break;
-            case 0xc1: printf("Ins: push 0\n"); break;
-            case 0x81: printf("Ins: tos=0\n"); break;
-            case 0x87: printf("Ins: tos=0x%X\n", u56); break;
-            case 0xd:  printf("Ins: pop\n"); break;
-            case 0x61: printf("Ins: if tos==0, pc+= 0x%x\n", u48); break; 
-            case 0x63: printf("Ins: if tos!=0, pc+= 0x%x\n", u48); break;             
-            case 0x65: printf("Ins: pc+= 0x%x\n", u48); break; 
-            default:       printf("Ary1 0x%lX\n", op);
-                     printf("op: 0x%lX, arg 0x%lX u56 0x%lX\n", op & 0xFF, u48, u56);
-        }
-#endif
-      }
+      printins(ofst);
       ofst+=8;
    }
 #endif
