@@ -1,14 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <assert.h>
-
-#include <vector>
-#include <map>
-
-using namespace std;
+#include "main.h"
 
 //TODO: there are 2 versions of the header with some kind of offset difference. 
 //This code only handles one version of it
@@ -20,7 +10,7 @@ enum {LIST_TYPE=2,FIX_TYPE,SYM_TYPE=5,FLO_TYPE=8,STR_TYPE};
 
 map<uint64_t,uint64_t> pgmap;
 map<uint64_t,uint16_t> typmap;
-uint64_t orig_strtab, strtab;
+uint64_t orig_strtab, strtab, arytab;
 uint8_t *buf;
 
 const char *codeNames[] = {"Inline Literal", "FuncCall", "KCompile", "SCompile",  
@@ -128,12 +118,12 @@ const char* atoms[]= {"dummy", "dummy" , "dummy" , "call" ,
                      "sexists" , "scompile" , "compilein"};
 
 
-void print_obj(uint64_t old_adr){
+SList* print_obj(uint64_t old_adr){
    old_adr &= ~0x7ul;
    //printf("Obj @ 0x%lx %d\n", old_adr, typmap[PAGE(old_adr)]);
    if(!old_adr){
       printf("Nil");
-      return;
+      return new SList("nil");
    }
    uint8_t *obj = (uint8_t*)(pgmap[PAGE(old_adr)] + OFS(old_adr));
    assert(pgmap.find(PAGE(old_adr)) != pgmap.end());
@@ -155,68 +145,85 @@ void print_obj(uint64_t old_adr){
          } break;
       case STR_TYPE: {
          printf("\"%s\"", &buf[*(uint64_t*)&obj[8] - orig_strtab + strtab]);
+         //TODO: quote
+         return new SList((char*)&buf[*(uint64_t*)&obj[8] - orig_strtab + strtab]);
          } break;
       case SYM_TYPE: {
          printf("Sym:\"%s\"", &buf[*(uint64_t*)&obj[8] - orig_strtab + strtab]);
+         return new SList((char*)&buf[*(uint64_t*)&obj[8] - orig_strtab + strtab]);
          } break;
       default:
          printf("Type: %d\n", typmap[PAGE(old_adr)]);
          assert(false);
    }
+   return 0;
 }
 
-void printins(uint64_t ofst){
-        uint64_t op=*(uint64_t*)&buf[ofst];
-        uint8_t code = op & 0xFF;
-        uint64_t u48 = op >> 16;
-        uint32_t u32 = u48;
-        uint64_t u56 = op >> 8;
-        if(pgmap.find(PAGE(op)) != pgmap.end()){
-              printf("Literal: 0x%lx, ", op);
-              print_obj(op);
-              printf("\n");
-              return;
-        }
+SList* printins(uint64_t ofst){
+    uint64_t op=*(uint64_t*)&buf[ofst];
+    uint8_t code = op & 0xFF;
+    uint64_t u48 = op >> 16;
+    uint32_t u32 = u48;
+    uint64_t u56 = op >> 8;
+    uint8_t u8 = u56;
+    if(pgmap.find(PAGE(op)) != pgmap.end()){
+          printf("Literal: 0x%lx, @0x%lx ", op, (ofst-arytab)/8);
+          SList *ret =print_obj(op);
+          printf("\n");
+          return ret;
+    }
 
-        if(code & 1 == 0){
-           printf("Load literal\n");
-           if(pgmap.find(PAGE(op)) != pgmap.end()){
-              print_obj(op);
-              printf("\n");
-           }else{
-              assert(false);
-           }
-           return;
-        }
-        if(code & 0xc0 == 0xc0){
-              printf("Push + ");
-           }
-           if (code & 0x80 == 0) {
-             code &= 0x7f;
-           } else {
-             code &= 0xbf;
-        }
-        printf("%s\n", codeNames[code>>1]);
+    if(code & 1 == 0){
+       printf("Load literal\n");
+       if(pgmap.find(PAGE(op)) != pgmap.end()){
+          print_obj(op);
+          printf("\n");
+       }else{
+          assert(false);
+       }
+       return 0;
+    }
+    if(code & 0xc0 == 0xc0){
+          printf("Push + ");
+       }
+       if (code & 0x80 == 0) {
+         code &= 0x7f;
+       } else {
+         code &= 0xbf;
+    }
+    printf("%s\n", codeNames[code>>1]);
 
-        uint8_t type = codeTypes[code>>1];
-  
-        if (type == 0x1c) {
-          printf("%d\n",u32);
-        }else if(type == 0x10){
-          printf("PCall 0x%lX 0x%X %s\n", u56&0xff, u32, atoms[(u56&0xff)>>1]);
-        }else if(type == 9 || type == 0x12 || type == 7 || type == 0x20 || type == 8 || type == 0x21 || type == 0x11 || type == 0x22){
-          uint8_t atom = u56;
-          printf("Atom %d %s\n", atom, atoms[atom]);
-        }else if(type == 0x1d){
-            //printf("0x%X 0x%lX 0x%X 0x%lX\n",type,u56&0xFF, code, u48); 
-            printins(ofst+u32*8);
-        }else if(type == 0x1a){
-            //Load true
-        }else if(type == 0xf){
-            //Lots of different types of calls
-        }else{ 
-            printf("Ukn: 0x%X 0x%lX 0x%X 0x%lX\n",type,u56&0xFF, code, u48); 
+    uint8_t type = codeTypes[code>>1];
+
+    if (type == 0x1c) {
+      printf("%d\n",u32);
+    }else if(type == 0x10){
+      printf("PCall 0x%lX 0x%X %s\n", u56&0xff, u32, atoms[(u56&0xff)>>1]);
+    }else if(type == 9 || type == 0x12 || type == 7 || type == 0x20 || type == 8 || type == 0x21 || type == 0x11 || type == 0x22){
+      uint8_t atom = u56;
+      printf("Atom %d %s\n", atom, atoms[atom]);
+    }else if(type == 0x1d){
+        //printf("0x%X 0x%lX 0x%X 0x%lX\n",type,u56&0xFF, code, u48); 
+        printins(ofst+u32*8);
+    }else if(type == 0x1a){
+        //Load true
+    }else if(type == 0xf){
+        //Lots of different types of calls
+    }else if(type == 0xd){
+        //u8 is nops, u32 is pc+ofst to symbol table
+        SList* syms = new SList("");
+        vector<SList*> v;
+        v.push_back(syms);
+        for(int i=0;  i < u8; i++){
+           syms->m_list.push_back(printins(ofst+(u32+i)*8));
         }
+        printf("Ukn: 0x%X 0x%X 0x%X 0x%lX @0x%lX\n",type,u8, code, u48, (ofst-arytab)/8); 
+
+        return new SList("let",&v);
+    }else{ 
+        printf("Ukn: 0x%X 0x%lX 0x%X 0x%lX @0x%lX\n",type,u56&0xFF, code, u48, (ofst-arytab)/8); 
+    }
+    return 0;
 }
 
 int main(){
@@ -355,10 +362,12 @@ int main(){
    strtab = ofst;
    ofst += nstrings;
  
-   uint64_t arytab = ofst;
+   arytab = ofst;
 #if 1
    for(uint32_t i=0; i < narrays/8; i++){
-      printins(ofst);
+      SList *plist=0;
+      if(plist = printins(ofst))
+         plist->print();
       ofst+=8;
    }
 #endif
