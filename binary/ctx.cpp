@@ -145,8 +145,7 @@ SList* print_obj(uint64_t old_adr){
          } break;
       case STR_TYPE: {
          printf("\"%s\"", &buf[*(uint64_t*)&obj[8] - orig_strtab + strtab]);
-         //TODO: quote
-         return new SList((char*)&buf[*(uint64_t*)&obj[8] - orig_strtab + strtab]);
+         return new SList("\"" + string((char*)&buf[*(uint64_t*)&obj[8] - orig_strtab + strtab]) + "\"");
          } break;
       case SYM_TYPE: {
          printf("Sym:\"%s\"", &buf[*(uint64_t*)&obj[8] - orig_strtab + strtab]);
@@ -159,7 +158,8 @@ SList* print_obj(uint64_t old_adr){
    return 0;
 }
 
-SList* printins(uint64_t ofst){
+SList* printins(uint64_t ofst, vector<SList*> &stack){
+    vector<SList*> tstack;
     uint64_t op=*(uint64_t*)&buf[ofst];
     uint8_t code = op & 0xFF;
     uint64_t u48 = op >> 16;
@@ -170,6 +170,7 @@ SList* printins(uint64_t ofst){
           printf("Literal: 0x%lx, @0x%lx ", op, (ofst-arytab)/8);
           SList *ret =print_obj(op);
           printf("\n");
+          stack.push_back(ret);
           return ret;
     }
 
@@ -201,24 +202,65 @@ SList* printins(uint64_t ofst){
       printf("PCall 0x%lX 0x%X %s\n", u56&0xff, u32, atoms[(u56&0xff)>>1]);
     }else if(type == 9 || type == 0x12 || type == 7 || type == 0x20 || type == 8 || type == 0x21 || type == 0x11 || type == 0x22){
       uint8_t atom = u56;
-      printf("Atom %d %s\n", atom, atoms[atom]);
+      printf("Atom %d %s 0x%X 0x%X 0x%X 0x%X\n", atom, atoms[atom], type, code, u8, u32);
+
+      if(u8 == 0x15) { //Just like call
+        vector<SList*> args;
+        for(int i=0; i < u32; i++){
+            args.push_back(stack.back());
+            stack.pop_back();
+        }
+        reverse(args.begin(),args.end());
+        SList* ret=new SList(atoms[atom],&args); 
+        stack.pop_back();
+        stack.push_back(ret);
+        return ret;
+      }
+      if(u8 == 0x20) {
+
+        vector<SList*> args;
+        args.push_back(printins(ofst+u32*8,tstack));
+        args.push_back(stack.back());
+        stack.pop_back();
+
+
+        SList *ret = new SList(atoms[atom],&args);
+        stack.push_back(ret);
+        return ret;
+      }
     }else if(type == 0x1d){
-        //printf("0x%X 0x%lX 0x%X 0x%lX\n",type,u56&0xFF, code, u48); 
-        printins(ofst+u32*8);
+        printf("Load pcrel: 0x%X 0x%X 0x%X 0x%lX\n",type,u8, code, u48); 
+        SList *ret = printins(ofst+u32*8,tstack);
+        stack.push_back(ret);
+        return ret;
     }else if(type == 0x1a){
-        //Load true
+        //Load constant
+        SList *ret = new SList("nil");
+        stack.push_back(ret);
+        return ret;
     }else if(type == 0xf){
         //Lots of different types of calls
+        printf("Call: 0x%X 0x%X 0x%X 0x%X\n",type,u8, code, u32);
+        vector<SList*> args;
+        for(int i=0; i < u32; i++){
+            args.push_back(stack.back());
+            stack.pop_back();
+        }
+        reverse(args.begin(),args.end());
+        SList* ret=new SList(stack.back()->m_atom,&args); 
+        stack.pop_back();
+        stack.push_back(ret);
+        return ret;
     }else if(type == 0xd){
         //u8 is nops, u32 is pc+ofst to symbol table
         SList* syms = new SList("");
         vector<SList*> v;
         v.push_back(syms);
         for(int i=0;  i < u8; i++){
-           syms->m_list.push_back(printins(ofst+(u32+i)*8));
+           syms->m_list.push_back(printins(ofst+(u32+i)*8,tstack));
         }
-        printf("Ukn: 0x%X 0x%X 0x%X 0x%lX @0x%lX\n",type,u8, code, u48, (ofst-arytab)/8); 
-
+        printf("Let: 0x%X 0x%X 0x%X 0x%lX @0x%lX\n",type,u8, code, u48, (ofst-arytab)/8); 
+        stack.resize(stack.size()-u8);
         return new SList("let",&v);
     }else{ 
         printf("Ukn: 0x%X 0x%lX 0x%X 0x%lX @0x%lX\n",type,u56&0xFF, code, u48, (ofst-arytab)/8); 
@@ -364,11 +406,18 @@ int main(){
  
    arytab = ofst;
 #if 1
+   vector<SList*> stack;
+   vector<SList*> exprs;
    for(uint32_t i=0; i < narrays/8; i++){
       SList *plist=0;
-      if(plist = printins(ofst))
-         plist->print();
+      if(plist = printins(ofst,stack))
+         exprs.push_back(plist);
       ofst+=8;
+   }
+
+   for(auto it=exprs.begin(); it!=exprs.end(); it++){
+       (*it)->print();
+       printf("\n");
    }
 #endif
 

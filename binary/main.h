@@ -9,6 +9,7 @@
 
 #include <vector>
 #include <map>
+#include <algorithm>
 
 using namespace std;
 
@@ -25,7 +26,10 @@ class SList {
      if(m_list.size())
         printf("(");
      for(auto it=m_list.begin(); it!=m_list.end(); it++){
-        (*it)->print();
+        if(*it)
+           (*it)->print();
+        else
+           printf("NULLPTR!!!!");
         printf(" ");
      }
      if(m_list.size())
