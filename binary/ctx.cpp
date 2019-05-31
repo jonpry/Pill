@@ -13,6 +13,8 @@ map<uint64_t,uint16_t> typmap;
 uint64_t orig_strtab, strtab, arytab;
 uint8_t *buf;
 
+set<SList*> consumed;
+
 const char *codeNames[] = {"Inline Literal", "FuncCall", "KCompile", "SCompile",  
                            "GetProp", "PutProp", "Pop", "Push", 
                            "DefGlobalFun", "DefSGlobalVar", "DefSLocalVar", "SetSLocalVar", 
@@ -199,7 +201,17 @@ SList* printins(uint64_t ofst, vector<SList*> &stack){
     if (type == 0x1c) {
       printf("%d\n",u32);
     }else if(type == 0x10){
-      printf("PCall 0x%lX 0x%X %s\n", u56&0xff, u32, atoms[(u56&0xff)>>1]);
+      printf("PCall 0x%X 0x%X 0x%X\n", code, u8, u32); //Comparison predicates
+
+      vector<SList*> args;
+      for(int i=0; i < 2; i++){
+          args.push_back(stack.back());
+          stack.pop_back();
+      }
+      reverse(args.begin(),args.end());
+      SList* ret=new SList("equalsp",&args); 
+      stack.push_back(ret);
+      return ret;
     }else if(type == 9 || type == 0x12 || type == 7 || type == 0x20 || type == 8 || type == 0x21 || type == 0x11 || type == 0x22){
       uint8_t atom = u56;
       printf("Atom %d %s 0x%X 0x%X 0x%X 0x%X\n", atom, atoms[atom], type, code, u8, u32);
@@ -212,23 +224,21 @@ SList* printins(uint64_t ofst, vector<SList*> &stack){
         }
         reverse(args.begin(),args.end());
         SList* ret=new SList(atoms[atom],&args); 
-        stack.pop_back();
         stack.push_back(ret);
         return ret;
       }
-      if(u8 == 0x20) {
+      if(u8 == 0x20 || u8 == 0x2C) { //One arg, one literal
 
         vector<SList*> args;
         args.push_back(printins(ofst+u32*8,tstack));
         args.push_back(stack.back());
         stack.pop_back();
 
-
         SList *ret = new SList(atoms[atom],&args);
         stack.push_back(ret);
         return ret;
       }
-    }else if(type == 0x1d){
+    }else if(type == 0x1d || type == 0x3){
         printf("Load pcrel: 0x%X 0x%X 0x%X 0x%lX\n",type,u8, code, u48); 
         SList *ret = printins(ofst+u32*8,tstack);
         stack.push_back(ret);
@@ -257,13 +267,15 @@ SList* printins(uint64_t ofst, vector<SList*> &stack){
         vector<SList*> v;
         v.push_back(syms);
         for(int i=0;  i < u8; i++){
-           syms->m_list.push_back(printins(ofst+(u32+i)*8,tstack));
+           SList *t = printins(ofst+(u32+i)*8,tstack);
+           consumed.insert(t);
+           syms->m_list.push_back(t);
         }
         printf("Let: 0x%X 0x%X 0x%X 0x%lX @0x%lX\n",type,u8, code, u48, (ofst-arytab)/8); 
         stack.resize(stack.size()-u8);
         return new SList("let",&v);
     }else{ 
-        printf("Ukn: 0x%X 0x%lX 0x%X 0x%lX @0x%lX\n",type,u56&0xFF, code, u48, (ofst-arytab)/8); 
+        printf("Ukn: 0x%X 0x%X 0x%X 0x%lX @0x%lX\n",type,u8, code, u48, (ofst-arytab)/8); 
     }
     return 0;
 }
@@ -416,8 +428,12 @@ int main(){
    }
 
    for(auto it=exprs.begin(); it!=exprs.end(); it++){
-       (*it)->print();
-       printf("\n");
+      if(consumed.find(*it) != consumed.end())
+         continue;
+      if(!(*it)->m_list.size())
+         continue;
+      (*it)->print();
+      printf("\n");
    }
 #endif
 

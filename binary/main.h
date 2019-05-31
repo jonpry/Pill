@@ -9,16 +9,25 @@
 
 #include <vector>
 #include <map>
+#include <set>
 #include <algorithm>
 
 using namespace std;
+
+class SList;
+
+extern set<SList*> consumed;
 
 class SList {
  public:
    SList(string atom="", vector<SList*> *slist=0){
       m_atom = atom;
-      if(slist)
+      if(slist){
          m_list = *slist;  
+         for(auto it=m_list.begin(); it!=m_list.end(); it++){
+            consumed.insert(*it);
+         }
+      }
    }
 
    void print(){
