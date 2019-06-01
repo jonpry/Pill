@@ -16,16 +16,18 @@ using namespace std;
 
 class SList;
 
-extern set<SList*> consumed;
+extern set<uint64_t> consumed;
 
 class SList {
  public:
-   SList(string atom="", vector<SList*> *slist=0){
+   SList(uint64_t ofst, string atom="", vector<SList*> *slist=0){
       m_atom = atom;
+      m_ofst = ofst;
       if(slist){
          m_list = *slist;  
          for(auto it=m_list.begin(); it!=m_list.end(); it++){
-            consumed.insert(*it);
+            if(*it)
+               consumed.insert((*it)->m_ofst);
          }
       }
    }
@@ -45,6 +47,7 @@ class SList {
         printf(")");
    }
 
+   uint64_t m_ofst;
    string m_atom;
    vector<SList*> m_list;
 };
