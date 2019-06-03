@@ -11,12 +11,23 @@
 #include <map>
 #include <set>
 #include <algorithm>
+#include <sstream>
 
 using namespace std;
 
 class SList;
 
 extern set<uint64_t> consumed;
+
+
+template <typename T>
+string to_scientific(const T a_value, const int n = 11)
+{
+    ostringstream out;
+    out.precision(n);
+    out << scientific << a_value;
+    return out.str();
+}
 
 class SList {
  public:
