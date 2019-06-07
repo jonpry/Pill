@@ -62,3 +62,10 @@ class SList {
    string m_atom;
    vector<SList*> m_list;
 };
+
+class Func {
+ public:
+   Func(uint32_t len, uint32_t n_args) : m_len(len), m_args(n_args) {}
+
+   uint32_t m_len, m_args;
+};

@@ -175,7 +175,7 @@ SList* print_obj(uint64_t old_adr){
    }\
    while(false)
 
-SList* printins(uint64_t *pofst, vector<SList*> &stack){
+SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
     uint64_t ofst = *pofst;
     vector<SList*> tstack;
     uint64_t op=*(uint64_t*)&buf[ofst];
@@ -185,7 +185,10 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack){
     uint64_t u56 = op >> 8;
     uint8_t u8 = u56;
     bool do_push=false;
-#if 1
+
+
+    printf("Op: 0x%lX Code: 0x%X %d @0x%lX\n", op, code, !(code & 1), (ofst-arytab)/8);
+#if 0
     if(pgmap.find(PAGE(op)) != pgmap.end()){
           printf("Literal: 0x%lx, @0x%lx ", op, (ofst-arytab)/8);
           SList *ret =print_obj(op);
@@ -194,13 +197,16 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack){
           return ret;
     }
 #endif
-    if(code & 1 == 0){
+    if(!(code & 1) || force_sym){
        printf("Load literal\n");
        if(pgmap.find(PAGE(op)) != pgmap.end()){
-          print_obj(op);
+          printf("Literal: 0x%lx, @0x%lx ", op, (ofst-arytab)/8);
+          SList *ret =print_obj(op);
           printf("\n");
-       }else{
-          assert(false);
+          stack.push_back(ret);
+          return ret;
+        }else{
+//          assert(false);
        }
        return 0;
     }
@@ -250,6 +256,8 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack){
           name = "notp"; 
       if(u8 == 0xf)
           name = "eval";
+      if(u8 == 0x3f)
+          name = "return";
 
       reverse(args.begin(),args.end());
       SList* ret=new SList(ofst,name,&args);
@@ -258,7 +266,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack){
       return ret;
     }else if(type == 9 || type == 0x12 || type == 7 || type == 0x20 || type == 8 || type == 0x21 || type == 0x11 || type == 0x22){
       uint8_t atom = u56;
-      printf("Atom %d %s 0x%X 0x%X 0x%X\n", atom, atoms[atom], type, code, u32);
+      printf("Atom %d %s Type: 0x%X Code: 0x%X u32: 0x%X op: 0x%lx u8:0x%X @0x%lx\n", atom, atoms[atom], type, code, u32, op, u8, (ofst-arytab)/8);
 
       if(u8 == 0x15 || u8 == 0x41 || u8 == 0x3 || u8==0x14 || u8==0x17) { //Just like call
         vector<SList*> args;
@@ -273,11 +281,12 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack){
            stack.push_back(ret);
         return ret;
       }
-      if(u8 == 0x20 || u8 == 0x2C || u8 == 0x2e) { //One arg, one literal
+
+      if(u8 == 0x20 || u8 == 0x2C || u8 == 0x2e ) { //One arg, one literal
 
         vector<SList*> args;
-        uint64_t lofst = ofst+u32*8;
-        args.push_back(printins(&lofst,tstack));
+        uint64_t lofst = ofst+((int32_t)u32)*8;
+        args.push_back(printins(&lofst,tstack,true));
         MOV_TO_STACK(args);
         assert(strcmp(atoms[atom],"and"));
         SList *ret = new SList(ofst,atoms[atom],&args);
@@ -301,7 +310,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack){
         args.push_back(new SList(ofst+1,"",&pred));
         args.push_back(new SList(ofst+2,"then"));
 
-        for(uint64_t tofst=ofst+8; tofst < ofst + u32*8 -8; tofst+=8){
+        for(uint64_t tofst=ofst+8; tofst < ofst + u32*8 -8 ; tofst+=8){
            uint64_t hofst = tofst;
            args.push_back(printins(&hofst,tstack));
         }
@@ -314,7 +323,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack){
         SList *ret = new SList(ofst,"if",&pruned);
         stack.push_back(ret);
 
-        *pofst += u32*8 -8 ;
+        *pofst += u32*8 -8-8;
         return ret;
       }
 
@@ -361,11 +370,20 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack){
          //   stack.push_back(ret);         
          return ret;
       }
+
+      if(code == 0x28){
+         SList *ret = new SList(ofst,"forall_begin");
+         //if(do_push)
+         //   stack.push_back(ret);         
+         return ret;
+      }
+
+      //assert(false);
       
     }else if(type == 0x1d || type == 0x3){
-        printf("Load pcrel: 0x%X 0x%X 0x%X 0x%lX\n",type,u8, code, u48); 
+        printf("Load pcrel: type: 0x%X u8: 0x%X code: 0x%X u32: 0x%X @0x%lX\n",type,u8, code, u32, (ofst-arytab)/8); 
         uint64_t lofst = ofst+((int32_t)u32)*8;
-        SList *ret = printins(&lofst,tstack);
+        SList *ret = printins(&lofst,tstack,true);
         if(do_push)
            stack.push_back(ret);
         return ret;
@@ -380,7 +398,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack){
     }else if(type == 0x1a){
         //Load constant //TODO: true
         printf("Create nil 0x%X 0x%lX, 0x%X @0x%lX\n",u8, u48, code, (ofst-arytab)/8);
-        assert(u8 == 0x51 || u8 == 0xB1);
+        assert(u8 == 0x51 || u8 == 0xB1 || u8 == 0 || u8 == 0xa2);
         SList *ret = 0;
         if(code == 0x81)
            ret = new SList(ofst,"nil");
@@ -411,7 +429,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack){
         v.push_back(syms);
         for(uint8_t i=0;  i < u8; i++){
            uint64_t lofst = ofst+(u32+i)*8;
-           SList *t = printins(&lofst,tstack);
+           SList *t = printins(&lofst,tstack,true);
            consumed.insert(t->m_ofst);
            syms->m_list.push_back(t);
         }
@@ -437,11 +455,12 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack){
     return 0;
 }
 
-void dump_func(uint64_t ofst, uint64_t nins){
+void dump_func(uint64_t ofst, Func func){
 #if 1
    vector<SList*> stack;
    vector<SList*> exprs;
-   for(uint32_t i=0; i < nins; i++){
+   ofst += (1+func.m_args)*8;
+   for(uint32_t i=1+func.m_args; i < func.m_len; i++){
       SList *plist=0;
       if(plist = printins(&ofst,stack))
          exprs.push_back(plist);
@@ -450,7 +469,7 @@ void dump_func(uint64_t ofst, uint64_t nins){
       ofst+=8;
    }
 
-   printf("\n\n*****Begin code dump*****\n\n");
+   printf("\n\nCD:*****Begin code dump*****\n\n");
 
    for(auto it=exprs.begin(); it!=exprs.end(); it++){
 #if 1
@@ -459,6 +478,7 @@ void dump_func(uint64_t ofst, uint64_t nins){
 //      if(!(*it)->m_list.size())
 //         continue;
 #endif
+      printf("CD:");
       (*it)->print();
       printf("\n");
    }
@@ -466,10 +486,11 @@ void dump_func(uint64_t ofst, uint64_t nins){
 }
 
 int main(){
-   vector<uint64_t> strings, syms, lists, funcs;
+   vector<uint64_t> strings, syms, lists;
+   vector<Func> funcs;
 
    //Load entire file into memory
-   FILE* f = fopen("3.ctx","r");
+   FILE* f = fopen("7.ctx","r");
    fseek(f,0,SEEK_END);
    size_t sz = ftell(f);
    fseek(f,0,SEEK_SET);
@@ -542,7 +563,7 @@ int main(){
               printf("Fun2 0x%lx\n", *(uint64_t*)&buf[ofst+8]);
               printf("Fun3 0x%lx\n", *(uint64_t*)&buf[ofst+0x10]);
               printf("Fun4 0x%lx\n", *(uint64_t*)&buf[ofst+0x18]);
-              funcs.push_back(*(uint16_t*)&buf[ofst+6]);
+              funcs.push_back(Func(*(uint16_t*)&buf[ofst+6], *(uint16_t*)&buf[ofst+4]));
            }
 #endif
            if(cell_type == 0x2) { //List
@@ -610,7 +631,7 @@ int main(){
    for(auto it = funcs.begin(); it!=funcs.end(); it++){
       uint64_t tofst = ofst+accum*8;
       dump_func(tofst,*it);
-      accum += *it;
+      accum += (*it).m_len;
    }
    exit(0);
 #endif
