@@ -1,2 +1,2 @@
 #!/bin/sh
-g++ ctx.cpp -g -o ctx
+g++ ctx.cpp print.cpp -g -o ctx 
