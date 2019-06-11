@@ -19,6 +19,8 @@ class SList;
 
 extern set<uint64_t> consumed;
 
+void print_token(string s);
+void print_reset();
 
 template <typename T>
 string to_scientific(const T a_value, const int n = 11)
@@ -33,6 +35,7 @@ class SList {
  public:
    SList(uint64_t ofst, string atom="", vector<SList*> *slist=0){
       m_atom = atom;
+      assert(m_atom.size());
       m_ofst = ofst;
       if(slist){
          m_list = *slist;  
@@ -44,18 +47,20 @@ class SList {
    }
 
    void print(){
-     printf("%s", m_atom.c_str());
+     if(m_atom.size())
+        print_token(m_atom);
      if(m_list.size())
-        printf("(");
+        print_token("(");
+     else 
+        assert(m_atom.size());
      for(auto it=m_list.begin(); it!=m_list.end(); it++){
         if(*it)
            (*it)->print();
         else
-           printf("NULLPTR!!!!");
-        printf(" ");
+           print_token("NULLPTR!!!!");
      }
      if(m_list.size())
-        printf(")");
+        print_token(")");
    }
 
    uint64_t m_ofst;

@@ -17,7 +17,7 @@ void print_token(string s){
           || s == "for" || s == "compile" || s == "dbCloseBag" || s == "if" || s == "else" 
           || s == "return"
           || s.rfind("setvar",0)==0 || s.rfind("if",0)==0 || s.rfind("when",0)==0 
-          || s.rfind("then",0)==0 || s.rfind("rod",0)==0){
+          || s.rfind("then",0)==0 || s.rfind("rod",0)==0 || s.rfind("loadfunc",0)==0){
       printf("\nCD: ");
       for(int i=0; i < indent; i++){
          printf("   ");

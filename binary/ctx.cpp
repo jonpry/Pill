@@ -230,7 +230,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
       return new SList(ofst,"int_1c");
     }else if(type == 0x10){
       printf("PCall 0x%X 0x%X 0x%X\n", code, u8, u32); //Comparison predicates
-   
+    
       vector<SList*> args;
       for(int i=0; i < u32; i++){
           args.push_back(stack.back());
@@ -245,22 +245,36 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
           name = "mulp";
       else if(u8 == 0x8)
           name = "subp";
-      else if(u8 == 0xb)
-          name = "ltp";
       else if(u8 == 0x7)
           name = "addp";
+      else if(u8 == 0xb)
+          name = "ltp";
       else if(u8 == 0xc)
           name = "lep";
       else if(u8 == 0xd)
           name = "gtp";
+      else if(u8 == 0xe)
+          name = "gep";
+      else if(u8 == 0x12)
+          name = "cadr"; 
+      else if(u8 == 0x13)
+          name = "cdr"; 
+      else if(u8 == 0x10 || u8 == 0x11)
+          name = "arrayindex";
+      else if(u8 == 0x14)
+          name = "cons";
       else if(u8 == 0x19)
           name = "notp"; 
       else if(u8 == 0xf)
           name = "eval";
       else if(u8 == 0x3f)
           name = "return";
+      else if(u8 == 0x1d)
+          name = "listp";
       else if(u8 == 0x22)
           name = "stringp";
+      else if(u8 == 0x25)
+          name = "fixp";
       else if(u8 == 0x26)
           name = "floatp";
 
@@ -273,7 +287,19 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
       uint8_t atom = u8;
       printf("Atom %d %s Type: 0x%X Code: 0x%X u32: 0x%X op: 0x%lx u8:0x%X @0x%lx\n", atom, atoms[atom], type, code, u32, op, u8, (ofst-arytab)/8);
 
-      if(u8 == 0x15 || u8 == 0x41 || u8 == 0x3 || u8==0x14 || u8==0x17 || u8 == 0x16 || u8 == 0x8 || u8 == 0xd || u8 == 0x52 || u8 == 0x10 || u8 == 0xe) { //Just like call
+      if(u8 == 0x20 || u8 == 0x2C || code == 0x1d) { //One arg, one literal, 1d is setq
+
+        vector<SList*> args;
+        uint64_t lofst = ofst+((int32_t)u32)*8;
+        args.push_back(printins(&lofst,tstack,true));
+        MOV_TO_STACK(args);
+        SList *ret = new SList(ofst,atoms[atom],&args);
+        if(do_push)
+           stack.push_back(ret);
+        return ret;
+      }
+
+      if(u8 == 3 || u8 == 0x15 || u8 == 0x1a || u8 == 0x41 || u8==0x14 || u8==0x17 || u8 == 0x16 || u8 == 0x8 || u8 == 0xd || u8 == 0x52 || u8 == 0x10 || u8 == 0xe ) { //Just like call
         vector<SList*> args;
         for(uint32_t i=0; i < u32; i++){
             args.push_back(stack.back());
@@ -284,6 +310,8 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
         }
         reverse(args.begin(),args.end());
         SList* ret=new SList(ofst,atoms[atom],&args);
+        if(u8 == 0xe)
+           ret->m_atom += "_" + to_string(u32);
         if(do_push)    
            stack.push_back(ret);
         return ret;
@@ -303,19 +331,6 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
            stack.push_back(ret);
         return ret;
       }
-
-      if(u8 == 0x20 || u8 == 0x2C) { //One arg, one literal
-
-        vector<SList*> args;
-        uint64_t lofst = ofst+((int32_t)u32)*8;
-        args.push_back(printins(&lofst,tstack,true));
-        MOV_TO_STACK(args);
-        SList *ret = new SList(ofst,atoms[atom],&args);
-        if(do_push)
-           stack.push_back(ret);
-        return ret;
-      }
-
 
       if(u8 == 0x2E) { //Two args, one literal
 
@@ -345,12 +360,19 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
         vector<SList*> args;
 //        for(uint32_t i=0; i < u32; i++)
 //           MOV_TO_STACK(args);
+        uint32_t consumed=0;
         MOV_TO_STACK(args);
+        consumed+=1+args.back()->m_list.size();
         MOV_TO_STACK(args);
-        if(args.back()->m_atom.rfind("then",0)==0)
+        if(consumed < u32 -1){
+          consumed+=1+args.back()->m_list.size();
           MOV_TO_STACK(args);
+        }
+        string fail="";
+        if(consumed+1!=u32)
+          fail="fail";
         reverse(args.begin(),args.end());        
-        SList *ret = new SList(ofst,"if_atom_" + to_string(u32), &args);
+        SList *ret = new SList(ofst,"if_atom_" + fail + "_" + to_string(u32) + "_" + to_string(consumed+1) + "_" + to_string(args.size()), &args);
         if(do_push)
            stack.push_back(ret);
         return ret;
@@ -363,7 +385,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
         return ret;
       }         
 
-      if(u8 == 0x4){
+      if(u8 == 3 || u8 == 0x4 || u8 == 0x5 || u8 == 0x6){
          SList *ret = new SList(ofst,"call_atom");
          return ret;
       }
@@ -404,12 +426,30 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
 
 #if 1
         for(auto it=args.begin(); it!=args.end(); it++){
-            if(*it && consumed.find((*it)->m_ofst) == consumed.end())
-               pruned.push_back(*it);
+            if(!*it || consumed.find((*it)->m_ofst) != consumed.end())
+                continue;
+            if((*it)->m_atom == "foreach_begin") //Check if it is a dummy atom
+                continue;
+            if((*it)->m_atom == "for_begin")
+                continue;
+            if((*it)->m_atom == "for_check")
+                continue;
+            if((*it)->m_atom == "foreach_check")
+                continue;
+            if((*it)->m_atom == "nil")
+                continue;
+            pruned.push_back(*it);
         }
 #else
         pruned.push_back(args.back());
 #endif
+        if(!pruned.size()){
+            printf("Hmm: %ld, %ld\n", args.size(), tstack.size());
+            if(args.size())
+              pruned.push_back(args.back());
+            //assert(false);
+        }
+
         SList *ret = 0;
         if(u8 == 0xb)
            ret = new SList(ofst,"then" + to_string(u32),&pruned);
@@ -490,14 +530,28 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
          return ret;
       }
 
-      if(u8 == 0 && code == 0x2f){
-         SList *ret = new SList(ofst,"exists");
+      if(u8 == 0 && code == 0x2d){
+         SList *ret = new SList(ofst,"exists_begin");
          //if(do_push)
          //   stack.push_back(ret);         
          return ret;
       }
 
-      //assert(false);
+      if(u8 == 0 && code == 0x2f){
+         SList *ret = new SList(ofst,"exists_check");
+         //if(do_push)
+         //   stack.push_back(ret);         
+         return ret;
+      }
+
+      if(u8 == 0 && code == 0x31){
+         SList *ret = new SList(ofst,"setof_begin");
+         //if(do_push)
+         //   stack.push_back(ret);         
+         return ret;
+      }
+
+      assert(false);
       
     }else if(type == 0x1d || type == 0x3){
         printf("Load pcrel: type: 0x%X u8: 0x%X code: 0x%X u32: 0x%X @0x%lX\n",type,u8, code, u32, (ofst-arytab)/8); 
@@ -541,11 +595,23 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
         stack.push_back(ret); 
         assert(do_push);
         return ret;
+    }else if(type == 0xa){
+        //Lots of different types of calls
+        printf("NCall: 0x%X 0x%X 0x%X 0x%X\n",type,u8, code, u32);
+        vector<SList*> args;
+        MOV_TO_STACK(args);
+        reverse(args.begin(),args.end());
+        SList* ret=new SList(ofst,"ncall",&args);
+        assert(!stack.empty()); 
+        stack.pop_back();
+        stack.push_back(ret); 
+        assert(do_push);
+        return ret;
     }else if(type == 0xd){
         //u8 is nops, u32 is pc+ofst to symbol table
         bool prog = code >> 1 == 9;
 
-        SList* syms = new SList(0,"");
+        SList* syms = new SList(0,"syms");
         vector<SList*> v;
         v.push_back(syms);
         for(uint8_t i=0;  i < u8; i++){
@@ -592,17 +658,33 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
         printf("SetVar: 0x%X 0x%X 0x%X 0x%lX @0x%lX\n",type,u8, code, u48, (ofst-arytab)/8);   
 
         vector<SList*> args;
+        string fail="";
         for(uint32_t i=0; i < u32; i++){
-            MOV_TO_STACK(args);
+            if(stack.size())
+               MOV_TO_STACK(args);
+            else
+               fail = "fail";
         }
         reverse(args.begin(),args.end());
       
-        SList *ret = new SList(ofst,"setvar_" + to_string(u32) + "_" + to_string(stack.size()), &args);
+        SList *ret = new SList(ofst,"setvar_" + fail + "_" + to_string(u32) + "_" + to_string(stack.size()), &args);
+        if(do_push)
+           stack.push_back(ret); 
+        return ret;
+    }else if(type == 0x19){
+        printf("DebugBreak: 0x%X 0x%X 0x%X 0x%lX @0x%lX\n",type,u8, code, u48, (ofst-arytab)/8);   
+        SList *ret = new SList(ofst,"debugbreak_" + to_string(u32));
+//        if(do_push)
+//           stack.push_back(ret); 
+        return ret;
+    }else if(type == 0x1F){
+        printf("LoadFunc: 0x%X 0x%X 0x%X 0x%lX @0x%lX\n",type,u8, code, u48, (ofst-arytab)/8);   
+        SList *ret = new SList(ofst,"loadfunc_" + to_string(u32));
         if(do_push)
            stack.push_back(ret); 
         return ret;
     }else{ 
-        printf("Ukn: 0x%X 0x%X 0x%X 0x%lX @0x%lX\n",type,u8, code, u48, (ofst-arytab)/8); 
+        printf("Ukn: 0x%X 0x%X 0x%X 0x%lX 0x%X @0x%lX\n",type,u8, code, u48, u32, (ofst-arytab)/8); 
     }
     return 0;
 }
@@ -790,7 +872,7 @@ int main(){
 #if 1
    printf("Funcs\n");
    uint64_t accum=0;
-   int nfuncs=2;
+   int nfuncs=22;
    for(auto it = funcs.begin(); it!=funcs.end(); it++){
       uint64_t tofst = ofst+accum*8;
       dump_func(tofst,*it);
