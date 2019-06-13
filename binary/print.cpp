@@ -15,9 +15,9 @@ void print_token(string s){
    bool newline=false;
    if(pos > 80 || s == "setq" || s == "foreach" || s == "let" || s == "putpropq" 
           || s == "for" || s == "compile" || s == "dbCloseBag" || s == "if" || s == "else" 
-          || s == "return"
+          || s == "return" || s == "case"
           || s.rfind("setvar",0)==0 || s.rfind("if",0)==0 || s.rfind("when",0)==0 
-          || s.rfind("then",0)==0 || s.rfind("rod",0)==0 || s.rfind("loadfunc",0)==0){
+          || s.rfind("then",0)==0 || s.rfind("rod",0)==0 || s.rfind("loadfunc",0)==0 || s.rfind("db",0)==0 || s.rfind("ts",0)==0){
       printf("\nCD: ");
       for(int i=0; i < indent; i++){
          printf("   ");

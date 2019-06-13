@@ -237,8 +237,10 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
           stack.pop_back();
       }
       string name = "pcall_" + to_string(u8);
-      if(u8 == 0x17 || u8 == 0x18)
+      if(u8 == 0x17)
           name = "equalsp";
+      else if(u8 == 0x18)
+          name = "nequalsp";
       else if(u8 == 0xa)
           name = "divp";
       else if(u8 == 0x9)
@@ -299,8 +301,10 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
         return ret;
       }
 
-      if(u8 == 3 || u8 == 0x15 || u8 == 0x1a || u8 == 0x41 || u8==0x14 || u8==0x17 || u8 == 0x16 || u8 == 0x8 || u8 == 0xd || u8 == 0x52 || u8 == 0x10 || u8 == 0xe ) { //Just like call
+      if(u8 == 3 || u8 == 0x15 || u8 == 0x1a || u8 == 0x41 || u8==0x14 || u8==0x17 || u8 == 0x16 || u8 == 0x8 || u8 == 0xd || u8 == 0x52 || u8 == 0x10 || u8 == 0xe) { //Just like call
         vector<SList*> args;
+        if(u8 == 0x10) //Case
+          u32--;
         for(uint32_t i=0; i < u32; i++){
             args.push_back(stack.back());
             if(stack.empty())
@@ -362,10 +366,14 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
 //           MOV_TO_STACK(args);
         uint32_t consumed=0;
         MOV_TO_STACK(args);
-        consumed+=1+args.back()->m_list.size();
+        consumed+=1;
+        if(args.back()->m_atom.rfind("then",0)==0 || args.back()->m_atom.rfind("else",0)==0)
+           consumed += args.back()->m_list.size();
         MOV_TO_STACK(args);
         if(consumed < u32 -1){
-          consumed+=1+args.back()->m_list.size();
+          consumed+=1;
+          if(args.back()->m_atom.rfind("then",0)==0 || args.back()->m_atom.rfind("else",0)==0)
+             consumed += args.back()->m_list.size();
           MOV_TO_STACK(args);
         }
         string fail="";
