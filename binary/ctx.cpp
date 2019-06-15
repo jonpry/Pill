@@ -147,7 +147,9 @@ SList* print_obj(uint64_t old_adr){
       case FLO_TYPE: {
          double d = *(double*)&obj[8];
          printf("%f", d);
-         return new SList(old_adr,to_scientific(d));
+         char flo[64];
+         sprintf(flo,"%.16g",d);
+         return new SList(old_adr,flo);
          } break;
       case STR_TYPE: {
          uint64_t ofst=*(uint64_t*)&obj[8] - orig_strtab + strtab;
@@ -318,8 +320,8 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
 
       if(u8 == 3 || u8 == 0x15 || u8 == 0x1a || u8 == 0x41 || u8==0x14 || u8==0x17 || u8 == 0x16 || u8 == 0x8 || u8 == 0xd || u8 == 0x52 || u8 == 0x10 || u8 == 0xe) { //Just like call
         vector<SList*> args;
-     //   if(u8 == 0x10) //Case
-     //     u32--;
+        if(u8 == 0x10) //Case
+          u32++;
         for(uint32_t i=0; i < u32; i++){
             args.push_back(stack.back());
             if(stack.empty())
@@ -329,12 +331,18 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
         }
         reverse(args.begin(),args.end());
         string extra = "";
-        if(string("dummy") == atoms[atom])
+        if(string("dummy") == atoms[atom] || u8 == 0xe)
           extra = "_" + to_string(u32) + "_" + to_string(u8);
 
+        if(u8==0xe){
+           for(auto it=args.begin(); it!=args.end(); it++){
+                //extra += "_" + (*it)->m_atom;
+                //assert((*it)->m_atom != "end_ag");
+           }
+        }
+
         SList* ret=new SList(ofst,atoms[atom] + extra,&args);
-        if(u8 == 0xe)
-           ret->m_atom += "_" + to_string(u32);
+
         if(do_push)    
            stack.push_back(ret);
         return ret;
@@ -398,6 +406,8 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
         string fail="";
         if(consumed+1!=u32)
           fail="fail";
+        if(u32==2) //Extra one for some reason
+          MOV_TO_STACK(args);
         reverse(args.begin(),args.end());        
         SList *ret = new SList(ofst,"if_atom_" + fail + "_" + to_string(u32) + "_" + to_string(consumed+1) + "_" + to_string(args.size()), &args);
         if(do_push)
@@ -591,7 +601,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
         //Load constant
         printf("Imm: 0x%X 0x%X 0x%X 0x%lX 0x%lX @0x%lX\n",type,u8, code, u48, u56, (ofst-arytab)/8); 
 
-        SList *ret = new SList(ofst,string(to_string(u56>>2)));
+        SList *ret = new SList(ofst,string(to_string(((int64_t)(u56<<8))>>10)));
         if(do_push)
            stack.push_back(ret);
         return ret;
@@ -746,6 +756,56 @@ void dump_func(uint64_t ofst, Func func){
 //         continue;
 #endif
       printf("CD:");
+      rename("notp","!",*it);
+      rename("addp","+",*it);
+      rename("subp","-",*it);
+      rename("divp","/",*it);
+      rename("mulp","*",*it);
+      rename("equalsp","==",*it);
+      rename("nequalsp","!=",*it);
+      rename("ltp","<",*it);
+      rename("lep","<=",*it);
+      rename("gtp",">",*it);
+      rename("gep",">=",*it);
+      rename("and","&&",*it);
+      rename("or","||",*it);
+
+      rename("setq","=",*it);
+      rename("getSGq","~>",*it);
+      rename("range",":",*it);
+
+      rpn("*",*it);
+      rpn("+",*it);
+      rpn("-",*it);
+      rpn("/",*it);
+      rpn("=",*it);
+      rpn("~>",*it);
+      rpn("==",*it);
+      rpn("!=",*it);
+      rpn(":",*it);
+      rpn("<",*it);
+      rpn("<=",*it);
+      rpn(">",*it);
+      rpn(">=",*it);
+      rpn("&&",*it);
+      rpn("||",*it);
+
+      mov_inside("postincrement",*it);
+      mov_inside("postdecrement",*it);
+
+      rename("postincrement","++",*it);
+      rename("postdecrement","--",*it);
+      rename("minus","-",*it);
+      renames("when_","when",*it);
+      renames("if_atom_","if",*it);
+      renames("then","then",*it,[](SList*t) {t->m_noparen=true;});
+      renames("else","else",*it,[](SList*t) {t->m_noparen=true;});
+      renames("dummy_","",*it, [](SList*t) {t->m_forcebreak=true;});
+      renames("setvar_","setvar",*it);
+
+      rot_back("setvar",&(*it));
+      rename("syms","",*it);
+
       print_reset();
       (*it)->print();
       printf("\n");
