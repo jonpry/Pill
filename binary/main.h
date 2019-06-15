@@ -1,4 +1,21 @@
 #pragma once
+//Copyright (C) 2019 Jon Pry
+//
+//This file is part of Pill.
+//
+//Pill is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation, either version 2 of the License, or
+//(at your option) any later version.
+//
+//Pill is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with Pill.  If not, see <http://www.gnu.org/licenses/>.
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,6 +40,8 @@ extern set<uint64_t> consumed;
 void print_token(string s, SList *t,bool dont_print=false);
 void print_reset();
 
+string escape(string s);
+
 template <typename T>
 string to_scientific(const T a_value, const int n = 11)
 {
@@ -38,6 +57,7 @@ class SList {
       m_atom = atom;
       m_forcebreak=false;
       m_noparen=false;
+      m_funccall=false;
       assert(m_atom.size());
       m_ofst = ofst;
       if(slist){
@@ -51,7 +71,7 @@ class SList {
 
    void print(){
      if(m_atom.size())
-        print_token(m_atom,this);
+        print_token(escape(m_atom),this);
      else
         print_token(" ",this);
      if(m_list.size())
@@ -72,7 +92,7 @@ class SList {
 
    uint64_t m_ofst;
    string m_atom;
-   bool m_forcebreak, m_noparen;
+   bool m_forcebreak, m_noparen, m_funccall;
    vector<SList*> m_list;
 };
 
@@ -88,5 +108,7 @@ void renames(string a, string b, SList *l, void(*lambda)(SList*) =0);
 
 void rpn(string a, SList *l);
 void mov_inside(string a, SList *l);
+void del_to_parent(string a, SList *l);
 void rot_back(string a, SList **l);
+void insert_nil(string a, SList *l);
 

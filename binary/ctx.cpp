@@ -1,3 +1,20 @@
+//Copyright (C) 2019 Jon Pry
+//
+//This file is part of Pill.
+//
+//Pill is free software: you can redistribute it and/or modify
+//it under the terms of the GNU General Public License as published by
+//the Free Software Foundation, either version 2 of the License, or
+//(at your option) any later version.
+//
+//Pill is distributed in the hope that it will be useful,
+//but WITHOUT ANY WARRANTY; without even the implied warranty of
+//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//GNU General Public License for more details.
+//
+//You should have received a copy of the GNU General Public License
+//along with Pill.  If not, see <http://www.gnu.org/licenses/>.
+
 #include "main.h"
 
 //TODO: there are 2 versions of the header with some kind of offset difference. 
@@ -119,6 +136,13 @@ const char* atoms[]= {"dummy", "dummy" , "dummy" , "call" ,
 
                      "sexists" , "scompile" , "compilein"};
 
+std::string to_hex(uint64_t to_convert){
+    std::string result;
+    std::stringstream ss;
+    ss << std::hex <<to_convert;
+    ss >> result;
+    return result;
+}
 
 SList* print_obj(uint64_t old_adr){
    old_adr &= ~0x7ul;
@@ -132,7 +156,7 @@ SList* print_obj(uint64_t old_adr){
 
    switch(typmap[PAGE(old_adr)]){
       case FUN_TYPE: {
-         return new SList(old_adr,"func_literal");
+         return new SList(old_adr,"anon_func_" + to_hex(old_adr));
          } break;
       case LIST_TYPE: {
 //         printf("List\n");
@@ -626,7 +650,10 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
             MOV_TO_STACK(args);
         }
         reverse(args.begin(),args.end());
+        printf("SCall: 0x%X 0x%X 0x%X 0x%X %s\n",type,u8, code, u32, stack.back()->m_atom.c_str());
+
         SList* ret=new SList(ofst,stack.back()->m_atom,&args);
+        ret->m_funccall=true;
         assert(!stack.empty()); 
         stack.pop_back();
         stack.push_back(ret); 
@@ -716,7 +743,10 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
         return ret;
     }else if(type == 0x1F){
         printf("LoadFunc: 0x%X 0x%X 0x%X 0x%lX @0x%lX\n",type,u8, code, u48, (ofst-arytab)/8);   
-        SList *ret = new SList(ofst,"loadfunc_" + to_string(u32));
+
+        uint64_t lofst = ofst+(u32)*8;
+        SList *t = printins(&lofst,tstack,true);
+        SList *ret = new SList(ofst,"loadfunc_" + to_string(u32) + "_" + t->m_atom);
         if(do_push)
            stack.push_back(ret); 
         return ret;
@@ -734,7 +764,16 @@ void dump_func(uint64_t ofst, Func func){
    uint64_t nofst = ofst;//*(uint64_t*)&buf[ofst];
    SList *name = printins(&nofst,stack,true);
    printf("CD: Name %s\n", name->m_atom.c_str());
-   ofst += (1+func.m_args)*8;
+   ofst += 8;
+   for(uint32_t i=0; i < func.m_args; i++){
+      uint64_t nofst = ofst;//*(uint64_t*)&buf[ofst];
+      SList *arg = printins(&nofst,stack,true);
+      printf("CD: Arg %s\n", arg->m_atom.c_str());
+      name->m_list.push_back(arg);
+      ofst += 8;
+   }
+   SList *proc = new SList(0,"procedure");
+   proc->m_list.push_back(name);
 
    for(uint32_t i=1+func.m_args; i < func.m_len; i++){
       SList *plist=0;
@@ -747,69 +786,78 @@ void dump_func(uint64_t ofst, Func func){
 
    printf("\n\nCD:*****Begin code dump*****\n\n");
    printf("CD: Name %s\n", name->m_atom.c_str());
-
+   vector<SList*> pruned;
    for(auto it=exprs.begin(); it!=exprs.end(); it++){
 #if 1
       if(consumed.find((*it)->m_ofst) != consumed.end())
          continue;
-//      if(!(*it)->m_list.size())
-//         continue;
-#endif
-      printf("CD:");
-      rename("notp","!",*it);
-      rename("addp","+",*it);
-      rename("subp","-",*it);
-      rename("divp","/",*it);
-      rename("mulp","*",*it);
-      rename("equalsp","==",*it);
-      rename("nequalsp","!=",*it);
-      rename("ltp","<",*it);
-      rename("lep","<=",*it);
-      rename("gtp",">",*it);
-      rename("gep",">=",*it);
-      rename("and","&&",*it);
-      rename("or","||",*it);
+      if(!(*it)->m_list.size())
+         continue;
 
-      rename("setq","=",*it);
-      rename("getSGq","~>",*it);
-      rename("range",":",*it);
-
-      rpn("*",*it);
-      rpn("+",*it);
-      rpn("-",*it);
-      rpn("/",*it);
-      rpn("=",*it);
-      rpn("~>",*it);
-      rpn("==",*it);
-      rpn("!=",*it);
-      rpn(":",*it);
-      rpn("<",*it);
-      rpn("<=",*it);
-      rpn(">",*it);
-      rpn(">=",*it);
-      rpn("&&",*it);
-      rpn("||",*it);
-
-      mov_inside("postincrement",*it);
-      mov_inside("postdecrement",*it);
-
-      rename("postincrement","++",*it);
-      rename("postdecrement","--",*it);
-      rename("minus","-",*it);
-      renames("when_","when",*it);
-      renames("if_atom_","if",*it);
-      renames("then","then",*it,[](SList*t) {t->m_noparen=true;});
-      renames("else","else",*it,[](SList*t) {t->m_noparen=true;});
-      renames("dummy_","",*it, [](SList*t) {t->m_forcebreak=true;});
-      renames("setvar_","setvar",*it);
-
-      rot_back("setvar",&(*it));
-      rename("syms","",*it);
-
-      print_reset();
-      (*it)->print();
-      printf("\n");
+      pruned.push_back(*it);
    }
+#endif
+   for(auto it=pruned.begin(); it!=pruned.end(); it++)
+      proc->m_list.push_back(*it);
+
+   printf("CD:");
+   rename("notp","!",proc);
+   rename("addp","+",proc);
+   rename("subp","-",proc);
+   rename("divp","/",proc);
+   rename("mulp","*",proc);
+   rename("equalsp","==",proc);
+   rename("nequalsp","!=",proc);
+   rename("ltp","<",proc);
+   rename("lep","<=",proc);
+   rename("gtp",">",proc);
+   rename("gep",">=",proc);
+   rename("and","&&",proc);
+   rename("or","||",proc);
+
+   renames("setq_","setq",proc);
+   rename("setq","=",proc);
+   rename("getSGq","~>",proc);
+   rename("range",":",proc);
+
+   rpn("*",proc);
+   rpn("+",proc);
+   rpn("-",proc);
+   rpn("/",proc);
+   rpn("=",proc);
+   rpn("~>",proc);
+   rpn("==",proc);
+   rpn("!=",proc);
+   rpn(":",proc);
+   rpn("<",proc);
+   rpn("<=",proc);
+   rpn(">",proc);
+   rpn(">=",proc);
+   rpn("&&",proc);
+   rpn("||",proc);
+
+   mov_inside("postincrement",proc);
+   mov_inside("postdecrement",proc);
+
+   rename("postincrement","++",proc);
+   rename("postdecrement","--",proc);
+   rename("minus","-",proc);
+   renames("when_","when",proc);
+   renames("if_atom_","if",proc);
+   renames("then","then",proc,[](SList*t) {t->m_noparen=true;});
+   renames("else","else",proc,[](SList*t) {t->m_noparen=true;});
+   renames("dummy_","",proc, [](SList*t) {t->m_forcebreak=true;});
+   renames("setvar_","setvar",proc);
+
+   rot_back("setvar",&proc);
+   rename("syms","",proc);
+
+   del_to_parent("_sprintf",proc);
+   insert_nil("sprintf",proc);
+
+   print_reset();
+   proc->print();
+   printf("\n");
 #endif
 }
 
@@ -959,7 +1007,7 @@ int main(){
 #if 1
    printf("Funcs\n");
    uint64_t accum=0;
-   int nfuncs=64;
+   int nfuncs=300;
    for(auto it = funcs.begin(); it!=funcs.end(); it++){
       uint64_t tofst = ofst+accum*8;
       dump_func(tofst,*it);
