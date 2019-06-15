@@ -210,6 +210,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
    //    stack.push_back(0);
        return 0;
     }
+    uint8_t raw_code = code;
     if(code & 0xc0 == 0xc0){
           printf("Push + ");
           do_push=true;
@@ -285,17 +286,31 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
       if(do_push) 
          stack.push_back(ret);
       return ret;
+    }else if(raw_code == 0x5d){ //Some sort of list
+        vector<SList*> args;
+        for(int i=0; i < 4; i++){
+            uint64_t lofst = ofst+(((int32_t)u32)+i)*8;
+            printins(&lofst,tstack,false);
+        }
+        SList *ret = new SList(ofst,"case_value",&tstack);
+        if(do_push)
+           stack.push_back(ret);
+        return ret;
     }else if(type == 0x9 || type == 0x12 || type == 7 || type == 0x20  || type == 0x11 || type == 0x22){
       uint8_t atom = u8;
       printf("Atom %d %s Type: 0x%X Code: 0x%X u32: 0x%X op: 0x%lx u8:0x%X @0x%lx\n", atom, atoms[atom], type, code, u32, op, u8, (ofst-arytab)/8);
 
       if(u8 == 0x20 || u8 == 0x2C || code == 0x1d) { //One arg, one literal, 1d is setq
-
+        string extra="";
+        if(code == 0x1d)
+          extra = "_1d_" + to_string(u8) + "_" + to_string(u32);
         vector<SList*> args;
+
         uint64_t lofst = ofst+((int32_t)u32)*8;
         args.push_back(printins(&lofst,tstack,true));
+
         MOV_TO_STACK(args);
-        SList *ret = new SList(ofst,atoms[atom],&args);
+        SList *ret = new SList(ofst,atoms[atom] + extra,&args);
         if(do_push)
            stack.push_back(ret);
         return ret;
@@ -303,8 +318,8 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
 
       if(u8 == 3 || u8 == 0x15 || u8 == 0x1a || u8 == 0x41 || u8==0x14 || u8==0x17 || u8 == 0x16 || u8 == 0x8 || u8 == 0xd || u8 == 0x52 || u8 == 0x10 || u8 == 0xe) { //Just like call
         vector<SList*> args;
-        if(u8 == 0x10) //Case
-          u32--;
+     //   if(u8 == 0x10) //Case
+     //     u32--;
         for(uint32_t i=0; i < u32; i++){
             args.push_back(stack.back());
             if(stack.empty())
@@ -313,7 +328,11 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
             stack.pop_back();
         }
         reverse(args.begin(),args.end());
-        SList* ret=new SList(ofst,atoms[atom],&args);
+        string extra = "";
+        if(string("dummy") == atoms[atom])
+          extra = "_" + to_string(u32) + "_" + to_string(u8);
+
+        SList* ret=new SList(ofst,atoms[atom] + extra,&args);
         if(u8 == 0xe)
            ret->m_atom += "_" + to_string(u32);
         if(do_push)    
@@ -880,7 +899,7 @@ int main(){
 #if 1
    printf("Funcs\n");
    uint64_t accum=0;
-   int nfuncs=22;
+   int nfuncs=64;
    for(auto it = funcs.begin(); it!=funcs.end(); it++){
       uint64_t tofst = ofst+accum*8;
       dump_func(tofst,*it);
