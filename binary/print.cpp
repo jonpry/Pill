@@ -35,6 +35,7 @@ void print_token(string s, SList *t, bool dont_print){
    if(pos > 80 || s == "setq" || s == "foreach" || s == "let" || s == "putpropq" 
           || s == "for" || s == "compile" || s == "dbCloseBag" || s == "if" || s == "else" 
           || s == "return" || s == "case" || s == "nil" || s == "prog" || s == "unless"
+          || s == "list"
           || s.rfind("setvar",0)==0 || s.rfind("if",0)==0 || s.rfind("when",0)==0 
           || s.rfind("then",0)==0 || s.rfind("loadfunc",0)==0
           || s.rfind("ts",0)==0 || (lpar && t->m_list.size() > 1 && (
@@ -70,5 +71,8 @@ void print_token(string s, SList *t, bool dont_print){
    if(!dont_print){
       printf("%s", s.c_str());
       fprintf(output_file,"%s", s.c_str());
+   }else{
+      printf(" ");
+      fprintf(output_file," ");
    }
 }

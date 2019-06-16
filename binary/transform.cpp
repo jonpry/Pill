@@ -30,8 +30,10 @@ string escape(string s){
       findAndReplaceAll(s,"\n","\\n");
       findAndReplaceAll(s,"\t","\\t");
    }else{
-      if(s.size() > 0 && isalpha(s.c_str()[0])) //TODO: determine if atom is symbol or operator
+      if(s.size() > 0 && (isalpha(s.c_str()[0]) || s.c_str()[0] == '@')){ //TODO: determine if atom is symbol or operator
          findAndReplaceAll(s,"-","\\-");
+         findAndReplaceAll(s,"@","\\@");
+      }
    }
    return s;
 }

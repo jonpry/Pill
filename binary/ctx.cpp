@@ -91,7 +91,7 @@ uint8_t codeTypes[] = {0x11, 0xf, 0x13, 0x13,
                       0x1e, 0x1f, 0x1f, 0x11, 
 
                       0xf, 0xf, 0xa, 0xa, 
-                      0xf, 0xf, 0x6, 0xd, 
+                      0x2, 0xf, 0x6, 0xd, 
                       0x0, 0x0, 0x10, 0x10, 
                       0x11, 0x17, 0x11, 0x1c, 
 
@@ -345,7 +345,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
         return ret;
       }
 
-      if(u8 == 3 || u8 == 0x15 || u8 == 0x1a || u8 == 0x41 || u8==0x14 || u8==0x17 || u8 == 0x16 || u8 == 0x8 || u8 == 0xd || u8 == 0x52 || u8 == 0x10 || u8 == 0xe || u8 == 0x19 || u8==0xf || u8==0x13) { //Just like call
+      if(u8 == 0x15 || u8 == 0x1a || u8 == 0x41 || u8==0x14 || u8==0x17 || u8 == 0x16 || u8 == 0x8 || u8 == 0xd || u8 == 0x52 || u8 == 0x10 || u8 == 0xe || u8 == 0x19 || u8==0xf || u8==0x13) { //Just like call
         vector<SList*> args;
         if(u8 == 0x10) //Case
           u32++;
@@ -468,6 +468,13 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
         return ret;
       }  
 
+      if(u8 == 0x3) { //unknown
+        SList *ret = new SList(ofst,"ukn3_atom");
+        //if(do_push)
+        //   stack.push_back(ret);
+        return ret;
+      }  
+
 #if 0
       if(u8 == 0xe) { //when
          vector<SList*> args;
@@ -500,8 +507,13 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
                 continue;
             if((*it)->m_atom == "foreach_check")
                 continue;
-            if((*it)->m_atom == "nil")
+            if((*it)->m_atom == "exists_begin")
                 continue;
+            if((*it)->m_atom == "exists_check")
+                continue;
+
+//            if((*it)->m_atom == "nil")
+//                continue;
             pruned.push_back(*it);
         }
 #else
@@ -546,6 +558,13 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
 
       if(u8 == 0 && code == 0x1B){
          SList *ret = new SList(ofst,"set_sglobal");
+         //if(do_push)
+         //   stack.push_back(ret);         
+         return ret;
+      }
+
+      if(u8 == 0 && code == 0xF){
+         SList *ret = new SList(ofst,"push");
          //if(do_push)
          //   stack.push_back(ret);         
          return ret;
@@ -670,6 +689,21 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
 
         SList* ret=new SList(ofst,stack.back()->m_atom,&args);
         ret->m_funccall=true;
+        assert(!stack.empty()); 
+        stack.pop_back();
+        stack.push_back(ret); 
+        assert(do_push);
+        return ret;
+    }else if(type == 0x2){
+        //Appears related to optional
+        printf("ICall: 0x%X 0x%X 0x%X 0x%X SS: %ld\n",type,u8, code, u32, stack.size());
+ 
+        uint64_t lofst = ofst+((int32_t)u32)*8;
+        SList *li = printins(&lofst,tstack,true);
+        printf("SCall: 0x%X 0x%X 0x%X 0x%X %s\n",type,u8, code, u32, li->m_atom.c_str());
+        SList *ret = new SList(ofst,"@optional");
+        ret->m_list.push_back(li);
+
         assert(!stack.empty()); 
         stack.pop_back();
         stack.push_back(ret); 
@@ -815,6 +849,11 @@ void dump_func(uint64_t ofst, Func func){
          continue;
       if(!(*it)->m_list.size())
          continue;
+
+      if((*it)->m_atom == "@optional"){
+         name->m_list.push_back(*it);
+         continue;
+      }
 
       pruned.push_back(*it);
    }
