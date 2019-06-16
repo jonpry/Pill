@@ -198,8 +198,8 @@ void forfactor(SList *l){
           forfactor(*it);
 }
 
-void foreachfactor(SList *l){
-    if(l->m_atom == "foreach"){
+void foreachfactor(string a, SList *l){
+    if(l->m_atom == a){
         vector<SList*> nl;
         nl.push_back(l->m_list[0]->m_list[0]);
         nl.push_back(l->m_list[0]->m_list[2]);
@@ -210,7 +210,7 @@ void foreachfactor(SList *l){
     }
     for(auto it=l->m_list.begin(); it!=l->m_list.end(); it++)
        if(*it)
-          foreachfactor(*it);
+          foreachfactor(a,*it);
 }
 
 SList* staticfactor(SList *l,bool quoted){

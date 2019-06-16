@@ -20,9 +20,11 @@
 static int indent=0;
 static int pos=0;
 static int since_open=0;
-void print_reset(){
+static FILE* output_file;
+void print_reset(FILE *f){
    indent = 0;
    pos = 0;
+   output_file = f;
 }
 
 void print_token(string s, SList *t, bool dont_print){
@@ -42,8 +44,10 @@ void print_token(string s, SList *t, bool dont_print){
               || t->m_forcebreak
           )) || (s == t->m_atom && t->m_funccall)){
       printf("\nCD: ");
+      fprintf(output_file,"\n");
       for(int i=0; i < indent; i++){
          printf("   ");
+         fprintf(output_file,"   ");
       }
       pos = indent*3;
       newline=true;
@@ -58,10 +62,13 @@ void print_token(string s, SList *t, bool dont_print){
      if(since_open && !newline){
        pos += 1;
        printf(" ");
+       fprintf(output_file," ");
      }
      since_open++;
    }
    pos += s.size();
-   if(!dont_print)
+   if(!dont_print){
       printf("%s", s.c_str());
+      fprintf(output_file,"%s", s.c_str());
+   }
 }

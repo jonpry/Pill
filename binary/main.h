@@ -32,14 +32,17 @@
 #include <functional>
 #include <iostream>
 
+#include <filesystem>
+
 using namespace std;
+namespace fs = std::filesystem;
 
 class SList;
 
 extern set<uint64_t> consumed;
 
 void print_token(string s, SList *t,bool dont_print=false);
-void print_reset();
+void print_reset(FILE *f);
 
 string escape(string s);
 
@@ -114,7 +117,7 @@ void insert_nil(string a, SList *l);
 void setsgq(SList *l);
 void putpropq(SList *l);
 void forfactor(SList *l);
-void foreachfactor(SList *l);
+void foreachfactor(string a, SList *l);
 void postfactor(SList *l);
 SList* staticfactor(SList *l,bool quoted=false);
 

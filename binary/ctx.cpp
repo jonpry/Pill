@@ -30,7 +30,7 @@ map<uint64_t,uint64_t> pgmap;
 map<uint64_t,uint16_t> typmap;
 uint64_t orig_strtab, strtab, arytab;
 uint8_t *buf;
-
+fs::path output_dir;
 set<uint64_t> consumed;
 
 const char *codeNames[] = {"Inline Literal", "FuncCall", "KCompile", "SCompile",  
@@ -345,7 +345,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
         return ret;
       }
 
-      if(u8 == 3 || u8 == 0x15 || u8 == 0x1a || u8 == 0x41 || u8==0x14 || u8==0x17 || u8 == 0x16 || u8 == 0x8 || u8 == 0xd || u8 == 0x52 || u8 == 0x10 || u8 == 0xe) { //Just like call
+      if(u8 == 3 || u8 == 0x15 || u8 == 0x1a || u8 == 0x41 || u8==0x14 || u8==0x17 || u8 == 0x16 || u8 == 0x8 || u8 == 0xd || u8 == 0x52 || u8 == 0x10 || u8 == 0xe || u8 == 0x19) { //Just like call
         vector<SList*> args;
         if(u8 == 0x10) //Case
           u32++;
@@ -615,6 +615,13 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
          return ret;
       }
 
+      if(u8 == 0 && code == 0x33){
+         SList *ret = new SList(ofst,"setof_check");
+         //if(do_push)
+         //   stack.push_back(ret);         
+         return ret;
+      }
+
       assert(false);
       
     }else if(type == 0x1d || type == 0x3){
@@ -793,6 +800,9 @@ void dump_func(uint64_t ofst, Func func){
    printf("\n\nCD:*****Begin code dump*****\n\n");
    printf("CD: Name %s\n", name->m_atom.c_str());
    vector<SList*> pruned;
+
+   fs::path output_path = output_dir / (name->m_atom + ".il");
+
    for(auto it=exprs.begin(); it!=exprs.end(); it++){
 #if 1
       if(consumed.find((*it)->m_ofst) != consumed.end())
@@ -856,6 +866,7 @@ void dump_func(uint64_t ofst, Func func){
    renames("else","else",proc,[](SList*t) {t->m_noparen=true;});
    renames("dummy_","",proc, [](SList*t) {t->m_forcebreak=true;});
    renames("setvar_","setvar",proc);
+   renames("let_atom_","setvar",proc);
 
    rot_back("setvar",&proc);
    rename("syms","",proc);
@@ -867,14 +878,18 @@ void dump_func(uint64_t ofst, Func func){
    insert_nil("sprintf",proc);
 
    forfactor(proc);
-   foreachfactor(proc);
+   foreachfactor("foreach",proc);
+   foreachfactor("setof",proc);
 
    staticfactor(proc);
    postfactor(proc);
 
-   print_reset();
+   FILE *f = fopen(output_path.c_str(),"w+");
+   print_reset(f);
    proc->print();
    printf("\n");
+   fprintf(f,"\n");
+   fclose(f);
 #endif
 }
 
@@ -887,6 +902,7 @@ int main(int argc, char** argv){
    args::ValueFlag<int> max_funcs(parser, "MAX", "Maximum number of functions to process.", {'m',"max-funcs"},-1);
 
    args::Positional<string> input(parser, "INPUT", "Input context file.", args::Options::Required);
+   args::Positional<string> output(parser, "OUTPUT", "Output directory.", args::Options::Required);
 
    try {
       parser.ParseCLI(argc, argv);
@@ -905,6 +921,13 @@ int main(int argc, char** argv){
       std::cerr << parser;
       return 1;
    }
+
+   if(! fs::exists(fs::status(args::get(output)))){
+      fs::create_directory(args::get(output));
+   }
+
+   assert(fs::is_directory(fs::status(args::get(output))));      
+   output_dir = args::get(output);
  
    //Load entire file into memory
    FILE* f = fopen(args::get(input).c_str(),"r");
