@@ -184,7 +184,9 @@ SList* print_obj(uint64_t old_adr){
          uint64_t ofst=*(uint64_t*)&obj[8] - orig_strtab + strtab;
          printf("Sym:\"%s\"", &buf[ofst]);
          consumed.insert(ofst);
-         return new SList(ofst,(char*)&buf[ofst]);
+         char sym[64];
+         sprintf(sym,"%s",(char*)&buf[ofst]);
+         return new SList(ofst,sym);
          } break;
       default:
          printf("Ukn Type: %d\n", typmap[PAGE(old_adr)]);
@@ -234,7 +236,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
   //        assert(false);
        }
    //    stack.push_back(0);
-       return 0;
+       return new SList(0,"nil");
     }
     uint8_t raw_code = code;
     if(code & 0xc0 == 0xc0){
@@ -712,7 +714,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
            //Done
            *pofst=0;
         }else{
-//           MOV_TO_STACK(args);
+           MOV_TO_STACK(args);
            ret = new SList(ofst,"compile_" + to_string(u8),&args);
         }
         if(do_push)
@@ -818,6 +820,7 @@ void dump_func(uint64_t ofst, Func func){
    renames("setq_","setq",proc);
    rename("setq","=",proc);
    rename("getSGq","~>",proc);
+   rename("getq","->",proc);
    rename("range",":",proc);
 
    rpn("*",proc);
@@ -826,6 +829,7 @@ void dump_func(uint64_t ofst, Func func){
    rpn("/",proc);
    rpn("=",proc);
    rpn("~>",proc);
+   rpn("->",proc,true);
    rpn("==",proc);
    rpn("!=",proc);
    rpn(":",proc);
@@ -851,9 +855,18 @@ void dump_func(uint64_t ofst, Func func){
 
    rot_back("setvar",&proc);
    rename("syms","",proc);
+   setsgq(proc);
+   putpropq(proc);
 
+   del_to_parent("compile_",proc);
    del_to_parent("_sprintf",proc);
    insert_nil("sprintf",proc);
+
+   forfactor(proc);
+   foreachfactor(proc);
+
+   staticfactor(proc);
+   postfactor(proc);
 
    print_reset();
    proc->print();
@@ -861,12 +874,21 @@ void dump_func(uint64_t ofst, Func func){
 #endif
 }
 
-int main(){
+int main(int argc, char** argv){
    vector<uint64_t> strings, syms, lists;
    vector<Func> funcs;
 
+   if(argc < 2){
+       printf("Usage: daenerys filename\n");
+       exit(0);
+   }
+
    //Load entire file into memory
-   FILE* f = fopen("pcellCode.cdn","r");
+   FILE* f = fopen(argv[1],"r");
+   if(!f){
+       printf("Could not open file %s\n", argv[1]);
+       exit(0);
+   }
    fseek(f,0,SEEK_END);
    size_t sz = ftell(f);
    fseek(f,0,SEEK_SET);
@@ -1007,7 +1029,7 @@ int main(){
 #if 1
    printf("Funcs\n");
    uint64_t accum=0;
-   int nfuncs=300;
+   int nfuncs=32;
    for(auto it = funcs.begin(); it!=funcs.end(); it++){
       uint64_t tofst = ofst+accum*8;
       dump_func(tofst,*it);

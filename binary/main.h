@@ -58,7 +58,6 @@ class SList {
       m_forcebreak=false;
       m_noparen=false;
       m_funccall=false;
-      assert(m_atom.size());
       m_ofst = ofst;
       if(slist){
          m_list = *slist;  
@@ -106,9 +105,15 @@ class Func {
 void rename(string a, string b, SList *l);
 void renames(string a, string b, SList *l, void(*lambda)(SList*) =0);
 
-void rpn(string a, SList *l);
+void rpn(string a, SList *l,bool reverse=false);
 void mov_inside(string a, SList *l);
 void del_to_parent(string a, SList *l);
 void rot_back(string a, SList **l);
 void insert_nil(string a, SList *l);
+void setsgq(SList *l);
+void putpropq(SList *l);
+void forfactor(SList *l);
+void foreachfactor(SList *l);
+void postfactor(SList *l);
+SList* staticfactor(SList *l,bool quoted=false);
 
