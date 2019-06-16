@@ -16,6 +16,7 @@
 //along with Pill.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "main.h"
+#include "args.hxx"
 
 //TODO: there are 2 versions of the header with some kind of offset difference. 
 //This code only handles one version of it
@@ -748,7 +749,10 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
 
         uint64_t lofst = ofst+(u32)*8;
         SList *t = printins(&lofst,tstack,true);
-        SList *ret = new SList(ofst,"loadfunc_" + to_string(u32) + "_" + t->m_atom);
+        uint64_t adr=0;
+        sscanf(t->m_atom.c_str(),"anon_func_%lx", &adr);
+        adr -= 0x20;
+        SList *ret = new SList(ofst,"loadfunc_" + to_string(u32) + "_anon_func_" + to_hex(adr));
         if(do_push)
            stack.push_back(ret); 
         return ret;
@@ -878,15 +882,34 @@ int main(int argc, char** argv){
    vector<uint64_t> strings, syms, lists;
    vector<Func> funcs;
 
-   if(argc < 2){
-       printf("Usage: daenerys filename\n");
-       exit(0);
-   }
+   args::ArgumentParser parser("Daenerys - Cadence context decompiler", "To generate code, typically pipe such as: ./daenerys foo.cdn | grep CD: | cut -c 5-");
+   args::HelpFlag help(parser, "HELP", "Show this help menu.", {'h', "help"});
+   args::ValueFlag<int> max_funcs(parser, "MAX", "Maximum number of functions to process.", {'m',"max-funcs"},-1);
 
+   args::Positional<string> input(parser, "INPUT", "Input context file.", args::Options::Required);
+
+   try {
+      parser.ParseCLI(argc, argv);
+   }
+   catch (args::Help) {
+      std::cout << parser;
+      return 0;
+   }
+   catch (args::ParseError e) {
+      std::cerr << e.what() << std::endl;
+      std::cerr << parser;
+      return 1;
+   }
+   catch (args::ValidationError e) {
+      std::cerr << e.what() << std::endl;
+      std::cerr << parser;
+      return 1;
+   }
+ 
    //Load entire file into memory
-   FILE* f = fopen(argv[1],"r");
+   FILE* f = fopen(args::get(input).c_str(),"r");
    if(!f){
-       printf("Could not open file %s\n", argv[1]);
+       printf("Could not open file %s\n", args::get(input).c_str());
        exit(0);
    }
    fseek(f,0,SEEK_END);
@@ -1029,7 +1052,7 @@ int main(int argc, char** argv){
 #if 1
    printf("Funcs\n");
    uint64_t accum=0;
-   int nfuncs=32;
+   int nfuncs=args::get(max_funcs);
    for(auto it = funcs.begin(); it!=funcs.end(); it++){
       uint64_t tofst = ofst+accum*8;
       dump_func(tofst,*it);
