@@ -8,6 +8,7 @@
 - Python 2.7
 - Klayout built with Python 2.7 
 - Parsimonious
+- G++
    
 ## Getting started
    First you must extract data from the PDK and make appropriate edits to entry.py. Entry.py is a template file for cell generation.
@@ -45,3 +46,6 @@ Sometimes functions needs to be defined, but don't need to exist.  For example "
 
 ## Python interop
 Skill calls python code through the interp.skill.procedures dictionary, which is largely populated in runtime.py. Types are largely native or can be coerced into native types. Very little needs to be done in order to marshal things in/out of the python world. In some rare cases a piece of code will call ~> on something that is actually a list, in which case returned lists should be instances of tools.SkillDeref instead. 
+
+## Binary contexts
+Many people do not have the SkillDev license required to pretty-print skill code from within Virtuoso. If your PDK is distributed in binary form, the binary subdirectory contains a program that can dump 64bit context files. This is a work in progress, but generates 99% working code. 
