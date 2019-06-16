@@ -117,6 +117,7 @@ void insert_nil(string a, SList *l);
 void setsgq(SList *l);
 void putpropq(SList *l);
 void forfactor(SList *l);
+void arrayfix(SList *l);
 void foreachfactor(string a, SList *l);
 void postfactor(SList *l);
 SList* staticfactor(SList *l,bool quoted=false);

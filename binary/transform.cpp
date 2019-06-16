@@ -235,4 +235,13 @@ SList* staticfactor(SList *l,bool quoted){
     return 0;
 }
 
+void arrayfix(SList *l){
+    if(l->m_atom == "" && l->m_list.size() == 3 && l->m_list[1]->m_atom == "["){
+       l->m_list.push_back(new SList(0,"]"));
+    }
+
+    for(auto it=l->m_list.begin(); it!=l->m_list.end(); it++)
+       if(*it)
+          arrayfix(*it);
+}
 

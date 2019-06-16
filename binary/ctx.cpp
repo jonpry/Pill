@@ -345,7 +345,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
         return ret;
       }
 
-      if(u8 == 3 || u8 == 0x15 || u8 == 0x1a || u8 == 0x41 || u8==0x14 || u8==0x17 || u8 == 0x16 || u8 == 0x8 || u8 == 0xd || u8 == 0x52 || u8 == 0x10 || u8 == 0xe || u8 == 0x19) { //Just like call
+      if(u8 == 3 || u8 == 0x15 || u8 == 0x1a || u8 == 0x41 || u8==0x14 || u8==0x17 || u8 == 0x16 || u8 == 0x8 || u8 == 0xd || u8 == 0x52 || u8 == 0x10 || u8 == 0xe || u8 == 0x19 || u8==0xf || u8==0x13) { //Just like call
         vector<SList*> args;
         if(u8 == 0x10) //Case
           u32++;
@@ -551,6 +551,12 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
          return ret;
       }
 
+      if(u8 == 0 && code == 0x1F){
+         SList *ret = new SList(ofst,"unless");
+         //if(do_push)
+         //   stack.push_back(ret);         
+         return ret;
+      }
 
       if(u8 == 0 && code == 0x21){
          SList *ret = new SList(ofst,"for_begin");
@@ -830,6 +836,7 @@ void dump_func(uint64_t ofst, Func func){
    rename("gep",">=",proc);
    rename("and","&&",proc);
    rename("or","||",proc);
+   rename("arrayindex","[",proc);
 
    renames("setq_","setq",proc);
    rename("setq","=",proc);
@@ -845,6 +852,7 @@ void dump_func(uint64_t ofst, Func func){
    rpn("~>",proc);
    rpn("->",proc,true);
    rpn("==",proc);
+   rpn("[",proc);
    rpn("!=",proc);
    rpn(":",proc);
    rpn("<",proc);
@@ -880,7 +888,7 @@ void dump_func(uint64_t ofst, Func func){
    forfactor(proc);
    foreachfactor("foreach",proc);
    foreachfactor("setof",proc);
-
+   arrayfix(proc);
    staticfactor(proc);
    postfactor(proc);
 
