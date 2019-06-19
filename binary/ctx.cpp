@@ -271,6 +271,12 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
           name = "equalsp";
       else if(u8 == 0x18)
           name = "nequalsp";
+      else if(u8 == 0x3)
+          name = "mapcar";
+      else if(u8 == 0x4)
+          name = "mapcan";
+      else if(u8 == 0x6)
+          name = "apply";
       else if(u8 == 0xa)
           name = "divp";
       else if(u8 == 0x9)
@@ -295,6 +301,8 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
           name = "arrayindex";
       else if(u8 == 0x14)
           name = "cons";
+      else if(u8 == 0x15)
+          name = "eq";
       else if(u8 == 0x19)
           name = "notp"; 
       else if(u8 == 0xf)
@@ -309,6 +317,10 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
           name = "fixp";
       else if(u8 == 0x26)
           name = "floatp";
+      else if(u8 == 0x27)
+          name = "zerop";
+      else if(u8 == 0xbf)
+          name = "return";
 
       reverse(args.begin(),args.end());
       SList* ret=new SList(ofst,name,&args);
