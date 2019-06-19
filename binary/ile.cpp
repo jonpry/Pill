@@ -32,13 +32,14 @@ int main(int argc, char** argv){
    uint8_t *buf = (uint8_t*)valloc(sz);
    fread(buf,sz,1,f);
    fclose(f);
-   for(int j=0; j < 1; j++){
-   for(int k=65; k < 66; k++){
-      int ki=sizeof(key)-1;
-      uint8_t vstate = j;
+   for(int j=62; j < 63; j++){
+   for(int k=0; k < 1; k++){
+      int ki=sizeof(key)-1-j;
+      uint8_t vstate = 0;
 //      printf("%d %d  abcdefghojklmnopksajhdkajhskdjh", j, k);
       for(size_t i=0; i < sz-k; i++){
-         printf("%c", vstate ^ buf[i+k] ^ key[ki]);
+         if(i>64)
+            printf("%c", vstate ^ buf[i+k] ^ key[ki]);
          vstate = buf[i+k];        
          ki--;
          if(ki<0)
