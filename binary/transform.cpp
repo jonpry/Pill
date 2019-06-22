@@ -46,6 +46,14 @@ void rename(string a, string b, SList *l){
           rename(a,b,*it);
 }
 
+void popback(string a, SList *l){
+    if(l->m_atom == a)
+      l->m_list.pop_back();
+    for(auto it=l->m_list.begin(); it!=l->m_list.end(); it++)
+       if(*it)
+          popback(a,*it);
+}
+
 void del_to_parent(string a, SList *l){
     SList *n=0;
     for(auto it=l->m_list.begin(); it!=l->m_list.end(); it++){
@@ -130,13 +138,15 @@ void getsgq(SList *l);
 }void getsgq(SList *l);
 
 
-void insert_nil(string a, SList *l){
+void insert_nil(string a, SList *l, void(*lambda)(SList*)){
     if(l->m_atom == a){
         l->m_list.insert(l->m_list.begin(),new SList(0,"nil"));
+        if(lambda)
+          lambda(l);
     }
     for(auto it=l->m_list.begin(); it!=l->m_list.end(); it++)
        if(*it)
-          insert_nil(a,*it);
+          insert_nil(a,*it, lambda);
 }
 
 void setsgq(SList *l){

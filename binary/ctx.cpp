@@ -294,7 +294,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
       else if(u8 == 0xe)
           name = "gep";
       else if(u8 == 0x12)
-          name = "cadr"; 
+          name = "car"; 
       else if(u8 == 0x13)
           name = "cdr"; 
       else if(u8 == 0x10 || u8 == 0x11)
@@ -919,6 +919,7 @@ void dump_func(uint64_t ofst, Func func){
    rename("postincrement","++",proc);
    rename("postdecrement","--",proc);
    rename("minus","-",proc);
+   rename("case_value","",proc);
    renames("when_","when",proc);
    renames("if_atom_","if",proc);
    renames("then","then",proc,[](SList*t) {t->m_noparen=true;});
@@ -927,6 +928,8 @@ void dump_func(uint64_t ofst, Func func){
    renames("setvar_","setvar",proc);
    renames("let_atom_","setvar",proc);
 
+   popback("case",proc);
+
    rot_back("setvar",&proc);
    rename("syms","",proc);
    setsgq(proc);
@@ -934,7 +937,7 @@ void dump_func(uint64_t ofst, Func func){
 
    del_to_parent("compile_",proc);
    del_to_parent("_sprintf",proc);
-   insert_nil("sprintf",proc);
+   insert_nil("sprintf",proc,[](SList*t) {t->m_funccall=true;});
 
    forfactor(proc);
    foreachfactor("foreach",proc);

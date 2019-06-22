@@ -81,7 +81,7 @@ grammar = r"""
      cond        = COND LPAR (LPAR assign ws? stmts ws? RPAR)+ RPAR
      case_list   = LPAR (list / assign) ws? stmts ws? RPAR case_list?
      proglet     = (PROG/LET) LPAR LPAR (identifier ws?)* RPAR stmts ws? RPAR
-     return      = RETURN LPAR assign? RPAR
+     return      = RETURN (LPAR assign? RPAR)?
      number      = ~'\d+\.?\d*' ~"[u]|e-?[0-9]+"?
      string      = '"' ~r'\\.|[^\"\\]*'* '"'
      stmt        = procedure / proglet / if / case / when / unless / while / foreach / for / return / assign / cond / exists /list
@@ -182,11 +182,11 @@ grammar = r"""
      LBR   = "[" ws?
      RBR   = "]" ws?
      EXP   = "**" ws?
-     COLON = ":" 
+     COLON = ":" ws?
      PRIME = "'"
      Q     = "?"
      ARROW = "->"
-     SARROW = "~>"
+     SARROW = "~>" ws?
      DOT   = "."
      ws    = (~"\s+"/(";" ~r"[^\n]*"))+
      """
@@ -531,10 +531,11 @@ class Visitor(NodeVisitor):
 
 
     def visit_return(self,node,children):
+       #return      = RETURN (LPAR assign? RPAR)?
         def gen(node=node,children=children):
            #print "return: " + str(self.c.stack_size)
-           if children[2]:
-              children[2][0]()
+           if children[1] and children[1][0][1]:
+              children[1][0][1][0]()
            else:
               self.c.LOAD_CONST(None)
            self.do_return()
