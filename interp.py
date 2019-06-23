@@ -80,7 +80,7 @@ grammar = r"""
      for         = FOR LPAR identifier ws? assign ws? assign ws? stmts RPAR
      cond        = COND LPAR (LPAR assign ws? stmts ws? RPAR)+ RPAR
      case_list   = LPAR (list / assign) ws? stmts ws? RPAR case_list?
-     proglet     = (PROG/LET) LPAR ((LPAR (identifier ws?)* RPAR)/NIL) stmts ws? RPAR
+     proglet     = (PROG/LET) LPAR ((LPAR (identifier ws?)* RPAR)/(NIL ws?)) stmts ws? RPAR
      return      = RETURN (LPAR assign? RPAR)?
      number      = ~'\d+\.?\d*' ~"[u]|e-?[0-9]+"?
      string      = '"' ~r'\\.|[^\"\\]*'* '"'
@@ -630,14 +630,14 @@ class Visitor(NodeVisitor):
        return self.kwfunc(0,node,children)
 
     def visit_proglet(self,node,children):
-       # PROG LPAR LPAR (identifier ws?)* RPAR stmts ws? RPAR
        # (PROG/LET) LPAR ((LPAR (identifier ws?)* RPAR)/NIL) stmts ws? RPAR
 
        def gen(ref=False,node=node,children=children):
           self.locals.append([])
 
-          for e in children[2]:
-             self.locals[-1].append(e[0]()[1])
+          if children[2][0][1]:
+             for e in children[2][0][1]:
+                self.locals[-1].append(e[0]()[1])
 
           #init and push var
           self.c.LOAD_GLOBAL('PushVars')
