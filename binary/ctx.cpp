@@ -173,7 +173,13 @@ SList* print_obj(uint64_t old_adr){
          double d = *(double*)&obj[8];
          printf("%f", d);
          char flo[64];
-         sprintf(flo,"%.16g",d);
+         sprintf(flo,"%.15g",d);
+         bool has_dec = false;
+         for(int i=0; i < strlen(flo); i++)
+            if(flo[i] == '.') 
+              has_dec = true;
+         if(!has_dec)
+            sprintf(flo+strlen(flo),".0");
          return new SList(old_adr,flo);
          } break;
       case STR_TYPE: {

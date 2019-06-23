@@ -80,7 +80,7 @@ grammar = r"""
      for         = FOR LPAR identifier ws? assign ws? assign ws? stmts RPAR
      cond        = COND LPAR (LPAR assign ws? stmts ws? RPAR)+ RPAR
      case_list   = LPAR (list / assign) ws? stmts ws? RPAR case_list?
-     proglet     = (PROG/LET) LPAR LPAR (identifier ws?)* RPAR stmts ws? RPAR
+     proglet     = (PROG/LET) LPAR ((LPAR (identifier ws?)* RPAR)/NIL) stmts ws? RPAR
      return      = RETURN (LPAR assign? RPAR)?
      number      = ~'\d+\.?\d*' ~"[u]|e-?[0-9]+"?
      string      = '"' ~r'\\.|[^\"\\]*'* '"'
@@ -631,10 +631,12 @@ class Visitor(NodeVisitor):
 
     def visit_proglet(self,node,children):
        # PROG LPAR LPAR (identifier ws?)* RPAR stmts ws? RPAR
+       # (PROG/LET) LPAR ((LPAR (identifier ws?)* RPAR)/NIL) stmts ws? RPAR
+
        def gen(ref=False,node=node,children=children):
           self.locals.append([])
 
-          for e in children[3]:
+          for e in children[2]:
              self.locals[-1].append(e[0]()[1])
 
           #init and push var
@@ -649,7 +651,7 @@ class Visitor(NodeVisitor):
           #print self.c.stack_size
 
           self.c.LOAD_CONST(None) #Nil is default return value
-          children[5]()
+          children[3]()
           #TODO: returns should point here but need a stack of stack target sizes first 
           #restore var
           self.c.LOAD_GLOBAL('PopVars')
