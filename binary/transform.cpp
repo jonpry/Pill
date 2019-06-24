@@ -54,6 +54,17 @@ void popback(string a, SList *l){
           popback(a,*it);
 }
 
+void condfix(SList *l){
+    if(l->m_atom == "cond"){
+        l->m_list.insert(l->m_list.begin(),l->m_list[0]->m_list[0]);
+        l->m_list[1]->m_list.erase(l->m_list[1]->m_list.begin());
+    }
+    for(auto it=l->m_list.begin(); it!=l->m_list.end(); it++)
+       if(*it)
+          condfix(*it);
+}
+
+
 void del_to_parent(string a, SList *l){
     SList *n=0;
     for(auto it=l->m_list.begin(); it!=l->m_list.end(); it++){
@@ -196,14 +207,18 @@ void postfactor(SList *l){
 
 void forfactor(SList *l){
     if(l->m_atom == "for"){
-        vector<SList*> nl;
-        nl.push_back(l->m_list[1]->m_list[0]);
-        nl.push_back(l->m_list[1]->m_list[2]);
-        nl.push_back(l->m_list[0]);
-        for(auto it=next(l->m_list.begin(),2); it!=l->m_list.end(); it++){
-          nl.push_back(*it);
+        if(l->m_list.size() < 2 || !l->m_list[0] || !(l->m_list[1]) || l->m_list[1]->m_list.size() < 3){
+            l->m_atom = "for_error";
+        }else{
+           vector<SList*> nl;
+           nl.push_back(l->m_list[1]->m_list[0]);
+           nl.push_back(l->m_list[1]->m_list[2]);
+           nl.push_back(l->m_list[0]);
+           for(auto it=next(l->m_list.begin(),2); it!=l->m_list.end(); it++){
+             nl.push_back(*it);
+           }
+           l->m_list = nl;
         }
-        l->m_list = nl;
     }
     for(auto it=l->m_list.begin(); it!=l->m_list.end(); it++)
        if(*it)

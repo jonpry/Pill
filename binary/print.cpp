@@ -35,7 +35,7 @@ void print_token(string s, SList *t, bool dont_print){
    if(pos > 80 || s == "setq" || s == "foreach" || s == "let" || s == "putpropq" 
           || s == "for" || s == "compile" || s == "dbCloseBag" || s == "if" || s == "else" 
           || s == "return" || s == "case" || s == "nil" || s == "prog" || s == "unless"
-          || s == "list"
+          || s == "list" || s == "cond"
           || s.rfind("setvar",0)==0 || s.rfind("if",0)==0 || s.rfind("when",0)==0 
           || s.rfind("then",0)==0 || s.rfind("loadfunc",0)==0
           || s.rfind("ts",0)==0 || (lpar && t->m_list.size() > 1 && (
@@ -45,10 +45,12 @@ void print_token(string s, SList *t, bool dont_print){
               || t->m_forcebreak
           )) || (s == t->m_atom && t->m_funccall)){
       printf("\nCD: ");
-      fprintf(output_file,"\n");
+      if(output_file)
+         fprintf(output_file,"\n");
       for(int i=0; i < indent; i++){
          printf("   ");
-         fprintf(output_file,"   ");
+         if(output_file)
+            fprintf(output_file,"   ");
       }
       pos = indent*3;
       newline=true;
@@ -63,16 +65,19 @@ void print_token(string s, SList *t, bool dont_print){
      if(since_open && !newline){
        pos += 1;
        printf(" ");
-       fprintf(output_file," ");
+       if(output_file)
+          fprintf(output_file," ");
      }
      since_open++;
    }
    pos += s.size();
    if(!dont_print){
       printf("%s", s.c_str());
-      fprintf(output_file,"%s", s.c_str());
+      if(output_file)
+         fprintf(output_file,"%s", s.c_str());
    }else{
       printf(" ");
-      fprintf(output_file," ");
+      if(output_file)
+         fprintf(output_file," ");
    }
 }

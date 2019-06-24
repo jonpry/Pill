@@ -365,8 +365,8 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
 
       if(u8 == 0x15 || u8 == 0x1a || u8 == 0x41 || u8==0x14 || u8==0x17 || u8 == 0x16 || u8 == 0x8 || u8 == 0xd || u8 == 0x52 || u8 == 0x10 || u8 == 0xe || u8 == 0x19 || u8==0xf || u8==0x13) { //Just like call
         vector<SList*> args;
-        if(u8 == 0x10) //Case
-          u32++;
+        //if(u8 == 0x10) //Case
+        //  u32++;
         for(uint32_t i=0; i < u32; i++){
             args.push_back(stack.back());
             if(stack.empty())
@@ -422,7 +422,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
         return ret;
       }
 
-      if(u8 == 0x33) { //postinc
+      if(u8 == 0x33 || u8 == 0x32) { //postinc,postdec
          vector<SList*> args;
          MOV_TO_STACK(args);
 
@@ -467,7 +467,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
         return ret;
       }         
 
-      if(u8 == 3 || u8 == 0x4 || u8 == 0x5 || u8 == 0x6){
+      if(u8 == 0x4 || u8 == 0x5 || u8 == 0x6){
          SList *ret = new SList(ofst,"call_atom");
          return ret;
       }
@@ -827,7 +827,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
     return 0;
 }
 
-void dump_func(uint64_t ofst, Func func){
+void dump_func(uint64_t ofst, Func func, string single_func){
 #if 1
    vector<SList*> stack;
    vector<SList*> exprs;
@@ -835,6 +835,8 @@ void dump_func(uint64_t ofst, Func func){
    uint64_t nofst = ofst;//*(uint64_t*)&buf[ofst];
    SList *name = printins(&nofst,stack,true);
    printf("CD: Name %s\n", name->m_atom.c_str());
+   if(single_func != "" && name->m_atom != single_func)
+      return;
    ofst += 8;
    for(uint32_t i=0; i < func.m_args; i++){
       uint64_t nofst = ofst;//*(uint64_t*)&buf[ofst];
@@ -843,6 +845,7 @@ void dump_func(uint64_t ofst, Func func){
       name->m_list.push_back(arg);
       ofst += 8;
    }
+
    SList *proc = new SList(0,"procedure");
    proc->m_list.push_back(name);
 
@@ -855,7 +858,7 @@ void dump_func(uint64_t ofst, Func func){
       ofst+=8;
    }
 
-   printf("\n\nCD:*****Begin code dump*****\n\n");
+   printf("\n\nCD:*****Begin code dump*****\nCD: ");
    printf("CD: Name %s\n", name->m_atom.c_str());
    vector<SList*> pruned;
 
@@ -879,7 +882,10 @@ void dump_func(uint64_t ofst, Func func){
    for(auto it=pruned.begin(); it!=pruned.end(); it++)
       proc->m_list.push_back(*it);
 
-   printf("CD:");
+   printf("CD: **********Pre transform********\n");
+   print_reset(0);
+   proc->print();
+
    rename("notp","!",proc);
    rename("addp","+",proc);
    rename("subp","-",proc);
@@ -933,6 +939,7 @@ void dump_func(uint64_t ofst, Func func){
    renames("dummy_","",proc, [](SList*t) {t->m_forcebreak=true;});
    renames("setvar_","setvar",proc);
    renames("let_atom_","setvar",proc);
+   
 
    popback("case",proc);
 
@@ -949,8 +956,11 @@ void dump_func(uint64_t ofst, Func func){
    foreachfactor("foreach",proc);
    foreachfactor("setof",proc);
    arrayfix(proc);
+   //condfix(proc);
    staticfactor(proc);
    postfactor(proc);
+
+   printf("CD: **********Post transform********\nCD: ");
 
    FILE *f = fopen(output_path.c_str(),"w+");
    print_reset(f);
@@ -958,6 +968,9 @@ void dump_func(uint64_t ofst, Func func){
    printf("\n");
    fprintf(f,"\n");
    fclose(f);
+
+   if(single_func != "")
+      exit(0);
 #endif
 }
 
@@ -968,6 +981,7 @@ int main(int argc, char** argv){
    args::ArgumentParser parser("Daenerys - Cadence context decompiler", "To generate code, typically pipe such as: ./daenerys foo.cdn | grep CD: | cut -c 5-");
    args::HelpFlag help(parser, "HELP", "Show this help menu.", {'h', "help"});
    args::ValueFlag<int> max_funcs(parser, "MAX", "Maximum number of functions to process.", {'m',"max-funcs"},-1);
+   args::ValueFlag<string> func_name(parser, "FUNC", "Process single function with name.", {'f',"func"},"");
 
    args::Positional<string> input(parser, "INPUT", "Input context file.", args::Options::Required);
    args::Positional<string> output(parser, "OUTPUT", "Output directory.", args::Options::Required);
@@ -1146,7 +1160,7 @@ int main(int argc, char** argv){
    int nfuncs=args::get(max_funcs);
    for(auto it = funcs.begin(); it!=funcs.end(); it++){
       uint64_t tofst = ofst+accum*8;
-      dump_func(tofst,*it);
+      dump_func(tofst,*it, args::get(func_name));
       accum += (*it).m_len;
       nfuncs--;
       if(!nfuncs)

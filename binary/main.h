@@ -116,6 +116,7 @@ void rot_back(string a, SList **l);
 void insert_nil(string a, SList *l, void(*lambda)(SList*) =0);
 void setsgq(SList *l);
 void putpropq(SList *l);
+void condfix(SList *l);
 void forfactor(SList *l);
 void arrayfix(SList *l);
 void foreachfactor(string a, SList *l);
