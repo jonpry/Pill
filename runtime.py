@@ -123,7 +123,11 @@ def cdfParseFloatString(s):
    elif s[-1] == "m":
       postfix = 1e-3 
       s=s[:-1]
-   v = float(s)*postfix
+   try:
+      v = float(s)*postfix
+   except:
+      print "*******" + s
+      raise
    print "cdfFloat: " + str(v)
    return v
 

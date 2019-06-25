@@ -176,7 +176,7 @@ SList* print_obj(uint64_t old_adr){
          sprintf(flo,"%.15g",d);
          bool has_dec = false;
          for(int i=0; i < strlen(flo); i++)
-            if(flo[i] == '.') 
+            if(flo[i] == '.' || flo[i] == 'e') 
               has_dec = true;
          if(!has_dec)
             sprintf(flo+strlen(flo),".0");
@@ -524,6 +524,8 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false){
             if((*it)->m_atom == "for_check")
                 continue;
             if((*it)->m_atom == "foreach_check")
+                continue;
+            if((*it)->m_atom == "forall_check")
                 continue;
             if((*it)->m_atom == "exists_begin")
                 continue;
