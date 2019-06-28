@@ -226,7 +226,7 @@ void forfactor(SList *l){
 }
 
 void foreachfactor(string a, SList *l){
-    if(l->m_atom == a){
+    if(l->m_atom == a && l->m_list.size() && l->m_list[0] && l->m_list[0]->m_list.size() > 2){
         vector<SList*> nl;
         nl.push_back(l->m_list[0]->m_list[0]);
         nl.push_back(l->m_list[0]->m_list[2]);
@@ -270,5 +270,25 @@ void arrayfix(SList *l){
     for(auto it=l->m_list.begin(); it!=l->m_list.end(); it++)
        if(*it)
           arrayfix(*it);
+}
+
+void elsefix(SList *l){
+    if(l->m_atom == "if" && (l->m_list.size() > 3 || (l->m_list.size() == 3 && l->m_list[2]->m_atom != "else"))){
+       SList *nl = new SList(0,"else");
+       nl->m_noparen=true;
+       for(int i=2; i < l->m_list.size(); i++){
+          nl->m_list.push_back(l->m_list[i]);
+       }
+
+       while(l->m_list.size() > 2){
+          l->m_list.erase(next(l->m_list.begin(),2));
+       }
+
+       l->m_list.push_back(nl);
+    }
+
+    for(auto it=l->m_list.begin(); it!=l->m_list.end(); it++)
+       if(*it)
+          elsefix(*it);
 }
 

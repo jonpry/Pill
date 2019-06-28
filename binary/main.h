@@ -62,6 +62,7 @@ class SList {
       m_forcebreak=false;
       m_noparen=false;
       m_funccall=false;
+      m_forceparen=false;
       m_ofst = ofst;
       if(slist){
          m_list = *slist;  
@@ -77,7 +78,7 @@ class SList {
         print_token(escape(m_atom),this);
      else
         print_token(" ",this);
-     if(m_list.size())
+     if(m_list.size() || m_forceparen)
         print_token("(",this,m_noparen);
      else 
         if(!m_atom.size()){
@@ -89,13 +90,13 @@ class SList {
         else
            print_token("NULLPTR!!!!",this);
      }
-     if(m_list.size())
+     if(m_list.size() || m_forceparen)
         print_token(")",this,m_noparen);
    }
 
    uint64_t m_ofst;
    string m_atom;
-   bool m_forcebreak, m_noparen, m_funccall;
+   bool m_forcebreak, m_noparen, m_funccall, m_forceparen;
    vector<SList*> m_list;
 };
 
@@ -121,6 +122,7 @@ void forfactor(SList *l);
 void arrayfix(SList *l);
 void foreachfactor(string a, SList *l);
 void postfactor(SList *l);
+void elsefix(SList *l);
 void popback(string a, SList *l);
 
 SList* staticfactor(SList *l,bool quoted=false);

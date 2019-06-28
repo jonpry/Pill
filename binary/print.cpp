@@ -38,6 +38,7 @@ void print_token(string s, SList *t, bool dont_print){
           || s == "list" || s == "cond"
           || s.rfind("setvar",0)==0 || s.rfind("if",0)==0 || s.rfind("when",0)==0 
           || s.rfind("then",0)==0 || s.rfind("loadfunc",0)==0
+          || s.rfind("compile",0)==0
           || s.rfind("ts",0)==0 || (lpar && t->m_list.size() > 1 && (
               t->m_list[1]->m_atom == "=" 
               || t->m_list[1]->m_atom == "=="
