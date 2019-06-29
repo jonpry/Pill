@@ -26,7 +26,7 @@ void findAndReplaceAll(std::string & data, std::string toSearch, std::string rep
 }
 
 string escape(string s){
-   if(s[0] == '"'){
+   if(s.size() && s[0] == '"'){
       findAndReplaceAll(s,"\n","\\n");
       findAndReplaceAll(s,"\t","\\t");
    }else{

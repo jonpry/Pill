@@ -192,6 +192,7 @@ SList* print_obj(uint64_t old_adr){
          printf("Sym:\"%s\"", &buf[ofst]);
          consumed.insert(ofst);
          char sym[64];
+         assert(strlen((char*)&buf[ofst]) < 64);
          sprintf(sym,"%s",(char*)&buf[ofst]);
          return new SList(ofst,sym);
          } break;
@@ -290,8 +291,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false, int
     
       vector<SList*> args;
       for(int i=0; i < u32; i++){
-          args.push_back(stack.back());
-          stack.pop_back();
+          MOV_TO_STACK(args);
       }
       string name = "pcall_" + to_string(u8);
       if(u8 == 0x17)
@@ -389,11 +389,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false, int
         if(u8 == 0x10) //Case
           u32++;
         for(uint32_t i=0; i < u32; i++){
-            args.push_back(stack.back());
-            if(stack.empty())
-               exit(0);
-            assert(!stack.empty());
-            stack.pop_back();
+            MOV_TO_STACK(args);
         }
         reverse(args.begin(),args.end());
         string extra = "";
@@ -808,7 +804,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false, int
            assert(false);
         } 
 
-        iprintf(indent+1,"SCall: 0x%X 0x%X 0x%X 0x%X %s\n",type,u8, code, u32, stack.back()?stack.back()->m_atom.c_str():0);
+        iprintf(indent+1,"SCall: 0x%X 0x%X 0x%X 0x%X %s\n",type,u8, code, u32, stack.back()->m_atom.c_str());
 
         ret=new SList(*pofst,stack.back()->m_atom,&args);
         ret->m_funccall=true;
@@ -857,9 +853,11 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false, int
            consumed.insert(t->m_ofst);
            syms->m_list.push_back(t);
         }
-        iprintf(indent+1,"Let: 0x%X 0x%X 0x%X 0x%lX @0x%lX\n",type,u8, code, u48, (*pofst-arytab)/8); 
-        if(!prog)
-           stack.resize(stack.size()-u8);
+        iprintf(indent+1,"Let: 0x%X 0x%X 0x%X 0x%lX @0x%lX\n",type,u8, code, u48, (*pofst-arytab)/8);
+        if(!prog){
+           assert(stack.size()>=u8); 
+           stack.resize((stack.size()>=u8)?stack.size()-u8:0);
+        }
         ret = new SList(*pofst,prog?"prog":"let",&v);
         if(do_push)
            stack.push_back(ret); 
@@ -941,7 +939,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false, int
         uint64_t lofst = *pofst+(u32)*8;
         SList *t = printins(&lofst,tstack,true,indent+1);
         uint64_t adr=0;
-        sscanf(t->m_atom.c_str(),"anon_func_%lx", &adr);
+        assert(sscanf(t->m_atom.c_str(),"anon_func_%lx", &adr)==1);
         adr -= 0x20;
         ret = new SList(*pofst,"loadfunc_" + to_string(u32) + "_anon_func_" + to_hex(adr));
         if(do_push)
@@ -1103,6 +1101,9 @@ void dump_func(uint64_t ofst, Func func, string single_func){
    printf("\n");
    fprintf(f,"\n");
    fclose(f);
+
+   delete proc;
+   proc = 0;
 
    if(single_func != "")
       exit(0);

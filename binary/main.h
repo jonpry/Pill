@@ -34,6 +34,8 @@
 
 #include <filesystem>
 
+#define MAX(a,b) ((a)>(b)?(a):(b))
+
 using namespace std;
 namespace fs = std::filesystem;
 
@@ -70,6 +72,13 @@ class SList {
             if(*it)
                consumed.insert((*it)->m_ofst);
          }
+      }
+   }
+
+   ~SList(){
+      for(auto it=m_list.begin(); it!=m_list.end(); it++){
+         if(*it)
+           delete *it;
       }
    }
 
