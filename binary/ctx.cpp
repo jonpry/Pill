@@ -386,8 +386,8 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false, int
 
       if(u8 == 0x15 || u8 == 0x1a || u8 == 0x41 || u8==0x14 || u8==0x17 || u8 == 0x16 || u8 == 0x8 || u8 == 0xd || u8 == 0x52 || u8 == 0x10 || u8 == 0xe || u8 == 0x19 || u8==0xf || u8==0x13) { //Just like call
         vector<SList*> args;
-        //if(u8 == 0x10) //Case
-        //  u32++;
+        if(u8 == 0x10) //Case
+          u32++;
         for(uint32_t i=0; i < u32; i++){
             args.push_back(stack.back());
             if(stack.empty())
@@ -462,12 +462,16 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false, int
 
 
         while((consumed < u32 || args.size() < 2) && stack.size()){
+           if(stack.size() && !stack.back()){
+              stack.pop_back();
+              continue;
+           }
            MOV_TO_STACK(args);
            consumed+=1;
            uint32_t tlen=0; 
            if(args.back()->m_atom.rfind("then",0)==0){
                SList *then=args.back();
-               if(then->m_list.back()->m_atom == "else"){
+               if(then->m_list.size() && then->m_list.back() && then->m_list.back()->m_atom == "else"){
                   SList* els = then->m_list.back();
                   stack.push_back(then);
                   then->m_list.pop_back();
@@ -488,7 +492,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false, int
                     exit(0);
                  }
               } 
-              consumed += tlen -1;
+//              consumed += tlen -1;
 
            }
 
@@ -522,6 +526,8 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false, int
 
         if(do_push)
            stack.push_back(ret);
+
+        ret->print();
         goto done;
       }         
 
@@ -583,8 +589,6 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false, int
            assert(tofst);
            i++;
            iprintf(indent+1,"%s: %d %ld %d %ld %ld\n", u8==0xc?"ELSE":"THEN",i, (tofst - bofst)/8, u32, args.size(), tstack.size());
-           if(hofst != tofst)
-             tofst-=8;
         }
 
         iprintf(indent+1,"%s End: 0x%X 0x%X 0x%X 0x%lX %s\n",u8==0xc?"Else":"Then",type,u8, code, u48, atoms[atom]); 
@@ -610,8 +614,8 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false, int
 //            if((*it)->m_atom == "nil")
 //                continue;
             real.push_back(*it);
-            if(!*it || consumed.find((*it)->m_ofst) != consumed.end())
-                continue;
+           //if(!*it || consumed.find((*it)->m_ofst) != consumed.end())
+            //    continue;
 
             pruned.push_back(*it);
         }
@@ -628,7 +632,7 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false, int
                }
                if(args.size())
                  pruned.push_back(args.back());
-               exit(0);
+               //exit(0);
               //assert(false);
             }
         }
@@ -642,13 +646,15 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false, int
         if(do_push)
            stack.push_back(ret);
 
-        *pofst = tofst;
+        *pofst = tofst-8;
+
         goto done;
       }
 
       if(u8 == 0 && code == 0x3b){ //Verify fun
          //if(do_push) 
          //  stack.push_back(stack.back());
+         assert(stack.size());
          ret = stack.back();
          goto done;
       }
@@ -794,11 +800,19 @@ SList* printins(uint64_t *pofst, vector<SList*> &stack,bool force_sym=false, int
             MOV_TO_STACK(args);
         }
         reverse(args.begin(),args.end());
-        iprintf(indent+1,"SCall: 0x%X 0x%X 0x%X 0x%X %s\n",type,u8, code, u32, stack.back()->m_atom.c_str());
+
+        if(stack.empty()){
+           for(auto it=args.begin(); it!=args.end(); it++){
+             (*it)->print();
+           }
+           assert(false);
+        } 
+
+        iprintf(indent+1,"SCall: 0x%X 0x%X 0x%X 0x%X %s\n",type,u8, code, u32, stack.back()?stack.back()->m_atom.c_str():0);
 
         ret=new SList(*pofst,stack.back()->m_atom,&args);
         ret->m_funccall=true;
-        assert(!stack.empty()); 
+
         stack.pop_back();
         stack.push_back(ret); 
         assert(do_push);
@@ -973,7 +987,7 @@ void dump_func(uint64_t ofst, Func func, string single_func){
          exprs.push_back(plist);
       if(ofst==0)
          break;
-      if(ofst==tofst)
+//      if(ofst==tofst)
          ofst+=8;
    }
 
