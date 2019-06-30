@@ -34,6 +34,25 @@ layout = db.Layout()
 layout.dbu = .001
 
 ######## These are implementations of Skill standard library functions
+def getsqg(*s):
+   ret = None
+   if not isinstance(s[0],list):
+      ret = s[0][s[1]]
+   else:
+      ret = []
+      for e in s[0]:
+         if s[1] in e:
+            ret.append(e[s[1]])
+      if len(ret) == 1:
+         ret = ret[0]
+      if len(ret) == 0:
+         ret = Npne
+   if len(s) > 2:
+      ret = getsqg([ret] + s[2:])
+   print "*****GetSqG"
+   print ret
+   return ret
+
 def stringp(s):
    return isinstance(s,basestring)
 
@@ -164,7 +183,7 @@ def rodCreateRect(layer,width=0,length=0,origin=[0,0],name="",elementsX=1,elemen
      length = bBox[1][1] - bBox[0][1]
       
    print "rodCreateRect: " + str([locals()[arg] for arg in inspect.getargspec(rodCreateRect).args])
-   objs = tools.DerefList()
+   objs = []
    for x in range(elementsX):
       for y in range(elementsY):
          p = addPoint(origin,[x * (spaceX+width), y * (spaceY+length)])
@@ -277,7 +296,8 @@ def rodFillBBoxWithRects(layer,fillBBox,width,length,spaceX,spaceY,gap="distribu
    return createObj(subs=rects)
 
 def createObj(dbox=None,subs=None):
-   assert(dbox or subs)
+   if not(dbox or (subs and len(subs) > 0 and subs[0])):
+       return None
    if subs:
       for s in subs:
          if dbox:
@@ -341,7 +361,7 @@ def rodCreatePath(layer,width,pts,termIOType=None,termName=None,pin=None,subRect
     assert(env['distributeSingleSubRect'])
     assert(len(subRect)==1)
     for s in subRect:
-       n,space = maxNinN(twidth+s['beginOffset']+s['endOffset'],width,s['space'])
+       n,space = maxNinN(width+s['beginOffset']+s['endOffset'],width,s['space'])
        s['elementsX'] = n
        s['spaceX'] = space
        #s['pin'] = pin
@@ -659,6 +679,8 @@ def run(layermap_file,s,r,l):
    skill.procedures['cdfParseFloatString'] = cdfParseFloatString
    skill.procedures['max'] = max
    skill.procedures['min'] = min
+   skill.procedures['sqrt'] = math.sqrt
+   skill.procedures['log'] = math.log
    skill.procedures['snapToGrid'] = snapToGrid
    skill.procedures['dbCreateLabel'] = dbCreateLabel
    skill.procedures['dbCreateRect'] = dbCreateRect 

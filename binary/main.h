@@ -116,11 +116,12 @@ class Func {
    uint32_t m_len, m_args;
 };
 
-void rename(string a, string b, SList *l);
+void rename(string a, string b, SList *l, void(*lambda)(SList*) =0);
 void renames(string a, string b, SList *l, void(*lambda)(SList*) =0);
 
 void rpn(string a, SList *l,bool reverse=false);
 void mov_inside(string a, SList *l);
+void mov_inside_front(string a, SList *l);
 void del_to_parent(string a, SList *l);
 void rot_back(string a, SList **l);
 void insert_nil(string a, SList *l, void(*lambda)(SList*) =0);
@@ -129,6 +130,7 @@ void putpropq(SList *l);
 void condfix(SList *l);
 void forfactor(SList *l);
 void arrayfix(SList *l);
+void callablefix(SList *l);
 void foreachfactor(string a, SList *l);
 void postfactor(SList *l);
 void elsefix(SList *l);

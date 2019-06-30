@@ -44,6 +44,7 @@ from parsimonious.grammar import Grammar, Literal
 from parsimonious.nodes import NodeVisitor, Node
 from assembler.assembler import Code, Compare, dump, Pass
 from dis import dis
+from runtime import getsqg
 
 sys.setrecursionlimit(100*1000)
 
@@ -59,9 +60,9 @@ def flatten(items):
 
 grammar = r"""
      block       = ws? stmts
-     procedure   = PROCEDURE LPAR ws? identifier LPAR ws? (identifier ws?)* string? ws? RPAR ws? stmts RPAR
-     identifier  = !((reserved) (ws/RPAR/EQU/PLUS/MINUS/RBR/BANG/TILDA/LT/GT/DOT/LPAR)) ~"[a-zA-Z_][a-zA-Z_0-9]*"
-     reserved    = IF / ELSE / THEN / FOR / PROCEDURE / WHEN / LET / UNLESS / CASE / NIL / FOREACH / SETOF / EXISTS / TAU / RETURN / COND / WHILE 
+     procedure   = PROCEDURE LPAR ws? identifier LPAR ws? (identifier ws?)* string? ws? (OPTIONAL ws? LPAR ((identifier/NIL) ws? RPAR)*)? RPAR ws? stmts RPAR
+     identifier  = !((reserved ) (ws/RPAR/EQU/PLUS/MINUS/RBR/BANG/TILDA/LT/GT/DOT/LPAR)) ~"[a-zA-Z_][a-zA-Z_0-9]*"
+     reserved    = IF / ELSE / THEN / FOR / PROCEDURE / WHEN / LET / UNLESS / CASE / NIL / FOREACH / SETOF / EXISTS / TAU / RETURN / COND / WHILE / OPTIONAL
      list        = LPAR (listelem ws?)* RPAR
      keyword_func= LPAR func_name ws? ((Q identifier ws?)? ororexpr ws?)+ RPAR
      func_call2  = func_name LPAR ws? ((Q identifier ws?)? ororexpr ws?)+ RPAR
@@ -84,7 +85,7 @@ grammar = r"""
      return      = RETURN (LPAR assign? RPAR)?
      number      = ~'\d+\.?\d*' ~"[u]|e-?[0-9]+"?
      string      = '"' ~r'\\.|[^\"\\]*'* '"'
-     stmt        = procedure / proglet / if / case / when / unless / while / foreach / for / return / assign / cond / exists /list
+     stmt        = procedure / proglet / if / case / when / unless / while / foreach / for  / assign / return / cond / exists /list
      stmts       = stmt ws? stmts?
       
 
@@ -127,11 +128,12 @@ grammar = r"""
      borexpr  = bxnorexpr (OR bxnorexpr)*
      bnorexpr = borexpr (NOR borexpr)*
      andandexpr  = bnorexpr (ANDAND andandexpr)?
-     ororexpr   = andandexpr (OROR ororexpr)?
+     ororexpr    = andandexpr (OROR ororexpr)?
      tuple       = ororexpr (ws? COLON ororexpr ws?)?
-     assign     = tuple (EQU assign)?
+     assign      = tuple (EQU assign)?
 
 
+     OPTIONAL    = "\\@optional" 
      TAU = "t" ws?
      IF = "if"
      ELSE = "else"
@@ -434,7 +436,24 @@ class Visitor(NodeVisitor):
     #TODO: this does not actually work if item is a list
     def visit_lderefexpr(self,node,children):
        def gen(ref=False,children=children,node=node):
-          self.do_deref(ref,node,children)
+          if children[1]:
+             self.c.LOAD_GLOBAL("getsqg")
+             lde1 = self.c.stack_size
+             #pdb.set_trace()
+             children[0](ref=True)
+             lde2 = self.c.stack_size
+             #print node.text + ", Was: " + str(ref) 
+             if lde2 - lde1 == 2:
+                self.c.BINARY_SUBSCR()
+             for i in range(len(children[1])):
+                e = children[1][i]
+                e[1](ref=True)  
+                #stack : object, #vars, label
+                self.c.ROT_TWO()
+                self.c.POP_TOP()
+             self.c.CALL_FUNCTION(len(children[1])+1)              
+          else:
+             children[0](ref=ref) 
        return gen
 
     def do_deref(self,ref,node,children):
@@ -1045,6 +1064,7 @@ class Visitor(NodeVisitor):
 
     def visit_procedure(self,node,children): 
         # PROCEDURE LPAR ws? identifier LPAR ws? (identifier ws?)* RPAR ws? stmts RPAR
+        # PROCEDURE LPAR ws? identifier LPAR ws? (identifier ws?)* string? ws? (OPTIONAL ws? (identifier ws?)*)? RPAR ws? stmts RPAR
         def gen():
            self.c = Code()
            self.code_stack.append(self.c)
@@ -1083,7 +1103,7 @@ class Visitor(NodeVisitor):
 
 
            self.c.LOAD_CONST(None) #Nil is default return value
-           children[11]()
+           children[12]()
  
            #self.pprint("prepop: ")
 
@@ -1302,7 +1322,7 @@ def loadcell(cell):
    global current_cell
    #load defaults into interpreter
    current_cell = cell_defs[cell]
-   context.params = tools.DerefDict()
+   context.params = {}
    load_defaults(current_cell['defaults'])
 
    if "props" in current_cell:

@@ -38,9 +38,12 @@ string escape(string s){
    return s;
 }
 
-void rename(string a, string b, SList *l){
-    if(l->m_atom == a)
+void rename(string a, string b, SList *l, void(*lambda)(SList*)){
+    if(l->m_atom == a){
       l->m_atom = b;
+      if(lambda)
+        lambda(l);
+    }
     for(auto it=l->m_list.begin(); it!=l->m_list.end(); it++)
        if(*it)
           rename(a,b,*it);
@@ -130,6 +133,20 @@ void mov_inside(string a, SList *l){
           mov_inside(a,*it);
 }
 
+void mov_inside_front(string a, SList *l){
+    if(l->m_atom == a && l->m_list.size()){
+      l->m_atom = "";
+      vector<SList*> new_list;
+      new_list.push_back(new SList(0,a));
+      new_list.push_back(l->m_list.front());
+      l->m_list = new_list;
+    }
+    for(auto it=l->m_list.begin(); it!=l->m_list.end(); it++)
+       if(*it)
+          mov_inside_front(a,*it);
+}
+
+
 void rot_back(string a, SList **pl){
     SList *l = *pl;
     if(l->m_atom == a){
@@ -204,6 +221,14 @@ void postfactor(SList *l){
           postfactor(*it);
 }
 
+void callablefix(SList *l){
+    if(l->m_atom == "isCallable" && l->m_list.size() == 1){
+        l->m_list[0]->m_atom = "'" + l->m_list[0]->m_atom;
+    }
+    for(auto it=l->m_list.begin(); it!=l->m_list.end(); it++)
+       if(*it)
+          callablefix(*it);
+}
 
 void forfactor(SList *l){
     if(l->m_atom == "for"){

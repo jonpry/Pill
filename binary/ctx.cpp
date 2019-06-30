@@ -997,6 +997,8 @@ void dump_func(uint64_t ofst, Func func, string single_func){
 
    for(auto it=exprs.begin(); it!=exprs.end(); it++){
 #if 1
+      if(!(*it))
+         continue;
       if(consumed.find((*it)->m_ofst) != consumed.end())
          continue;
       if(!(*it)->m_list.size())
@@ -1061,7 +1063,15 @@ void dump_func(uint64_t ofst, Func func, string single_func){
 
    rename("postincrement","++",proc);
    rename("postdecrement","--",proc);
-   rename("minus","-",proc);
+
+   mov_inside_front("minus",proc);
+   rename("minus","-",proc,[](SList*t) {t->m_forceparen=true;});
+
+   callablefix(proc);
+
+   mov_inside_front("quote",proc);
+   rename("quote","'",proc,[](SList*t) {t->m_noparen=true;});
+
    rename("case_value","",proc);
    renames("when_","when",proc);
    renames("if_atom_","if",proc);

@@ -112,44 +112,6 @@ class Lazy(object):
                         #print name
                         setattr(cls, name, property(make_proxy(name)))
 
-class DerefList(list):
-   __ignore__ = "class mro new init setattr getattr getattribute"
-
-   def __init__(self):
-       pass
-
-   def __getitem__(self,key):
-       if isinstance(key,basestring):
-           ret = []
-           for e in self:
-              ret.append(e[key])
-           if len(ret)==1:
-              return ret[0]
-           return ret
-       return list.__getitem__(self,key)
-
-class DerefDict(dict):
-   __ignore__ = "class mro new init setattr getattr getattribute"
-
-   def __init__(self):
-       pass
-
-   def __getitem__(self,key):
-       if dict.__contains__(self,key):
-          return dict.__getitem__(self,key)
-
-       print "************" + key
-       ret = []
-       for e in self:
-          if key in e:
-             ret.append(e[key])
- 
-       print "***********" + str(ret)
-       if len(ret)==1:
-          return ret[0]
-       return ret
-
-
 class SkillList(object):
     __ignore__ = "class mro new init setattr getattr getattribute"
 
