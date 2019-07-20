@@ -17,6 +17,9 @@
 
 #include "main.h"
 
+set<uint64_t> consumed;
+map<uint64_t,SList*> frompos;
+
 const char *types[] = { "0", "char", "short", "int", 
                         "long", "float", "double", "pointer",
                         "byte", "car", "cdr", "LPType", 
@@ -198,47 +201,496 @@ zeMagInst       	    95			16
 zeLrgSigAryInfo 	    96			 8
 */
 
-uint32_t sizes32[] = { 1, 1, 2, 2, 4, 4, 4, 4, 
-                     4, 4, 8, 8, 4, 4, 1, 1, 
-                     0x24, 0, 4, 0xc, 0x14, 0x10, 0x10, 0x14, 
-                     0, 0, 0, 0, 0, 0, 0, 0,
-                     4, 8, 8, 8, 0x10, 0x10, 8, 0,
-                     4, 0, 0, 0, 0, 0, 0, 0,
-                     0, 0, 0x34, 0x44, 0x1c, 0, 0, 0,
-                     0, 0, 0, 0, 0x20, 0x1c, 0x30, 2,
-                     2, 0x14, 0x28, 0x10, 0xc, 0x10, 0, 0xc,
-                     0, 0, 0x18, 0, 0, 0, 0, 0,
-                     0, 0, 0, 0, 0x20, 0x10, 0x14, 0x14,
-                     0x14, 0xc, 8, 0x14, 0x30, 0x20, 0x1c, 0x2c,
+uint32_t sizes32[] = { 4, 1, 4, 2, 4, 4, 4, 4,  //0
+                     4, 4, 8, 8, 4, 4, 1, 1,  //0x8
+                     0x24, 0, 4, 0x8, 0xe, 0x10, 0x10, 0x10, //0x10 
+                     0, 0, 0, 0, 0, 0, 0, 0, //0x18
+                     4, 8, 8, 8, 0x10, 0x10, 8, 0, //0x20
+                     4, 0, 0, 0, 0, 0, 0, 0, //0x28
+                     0, 0, 0x110-0xe8-4, 0x44, 0x1c, 0, 0, 0, //0x30
+                     0, 0, 0, 0, 0x20, 0x1c, 0x30, 2, //0x38
+                     2, 0x14, 0x28, 0x10, 0xc, 0x10, 0, 0xc, //0x40
+                     0, 0, 0x18, 0, 0, 0, 0, 0, //0x48
+                     0x1a7, 0, 0, 0, 0x20, 0x10, 0x14, 0x14, //0x50
+                     0x14, 0x4b, 8, 0x14, 0x30, 0x20, 0x1c, 0x2c,
                      0x44, 0x30, 0x20, 8};
 
-uint32_t stringidx[] = {1, 1, 2, 2, 3, 3, 4, 4, 
-                        5, 5, 6, 6, 7, 7, 8, 8,
-                        0x1c, 0, 0x13, 0x12, 0x1a, 0x1b, 0x14, 0x15,
-                        0, 0, 0, 0, 0, 0, 0, 0,
-                        0x17, 0x16, 0x4B, 0x4B, 0x4A, 0x4A, 0x18, 0,
-                        0x11, 0, 0, 0, 0, 0, 0, 0,
-                        0, 0, 0x13b, 0x150, 0x145, 0, 0, 0,
-                        0, 0, 0, 0, 0x14f, 0x13f, 0x137, 0x14c,
-                        0x14c, 0x146, 0x13a, 0x13c, 0x15a, 0x154, 0, 0x147, 
-                        0, 0, 0x155, 0, 0, 0, 0, 0,
-                        0x14d, 0x15b, 0x15c, 0x157, 0x144, 0x143, 0x152, 0x156, 
+
+uint32_t sizesc32[] = { 4, 1, 4, 2, 4, 4, 4, 4,  //0
+                     4, 4, 8, 8, 4, 4, 1, 1,  //0x8
+                     0x24, 0, 4, 0x8, 0xe, 0x10, 0x9, 0x10, //0x10 
+                     0, 0, 0, 0, 0, 0, 0, 0, //0x18
+                     4, 8, 8, 8, 0x10, 0x10, 8, 0, //0x20
+                     4, 0, 0, 0, 0, 0, 0, 0, //0x28
+                     0, 0, 0x110-0xe8-4, 0x44, 0xe, 0, 0, 0, //0x30
+                     0, 0, 0, 0, 0x20, 0x1c, 0x30, 2, //0x38
+                     2, 0x14, 0x28, 0x10, 0xc, 0x10, 0, 0x1c, //0x40
+                     0, 0, 0x18, 0, 0, 0, 0, 0, //0x48
+                     0x1a7, 8, 40, 40, 0x20, 0x10, 0x14, 0x14, //0x50
+                     0x14, 0xc, 8, 0x14, 0x30, 0x20, 0x1a, 0x2c,//0x58
+                     0x44, 0x30, 0x20, 8};
+
+uint32_t stringidx[] = {1, 1, 2, 2, 3, 3, 4, 4, //0
+                        5, 5, 6, 6, 7, 7, 8, 8, //0x8
+                        0x1c, 0, 0x13, 0x12, 0x1a, 0x1b, 0x14, 0x15, //0x10
+                        0, 0, 0, 0, 0, 0, 0, 0, //0x18
+                        0x17, 0x16, 0x4B, 0x4B, 0x4A, 0x4A, 0x18, 0,  //0x20
+                        0x11, 0, 0, 0, 0, 0, 0, 0, //0x28
+                        0, 0, 0x2e, 0x150, 0x145, 0, 0, 0, //0x30
+                        0, 0, 0, 0, 0x14f, 0x13f, 0x137, 0x14c, //0x38
+                        0x14c, 0x146, 0x13a, 0x13c, 0x15a, 0x154, 0, 0x147, //0x40 
+                        0, 0, 0x155, 0, 0, 0, 0, 0, //0x48
+                        0x14d, 0x15b, 0x15c, 0x157, 0x144, 0x143, 0x152, 0x156, //0x50, 
                         0x151, 0x13d, 0x153, 0x15d, 0x140, 0x14b, 0x138, 0x149,
                         0x148, 0, 0, 0}; 
+
+set<uint32_t> arrayTypes = {1,3,5,7,9,11,13,15,35,37,64};
+
+#define MIN(a,b) ((a)<(b)?(a):(b))
 
 void printbytes(uint8_t *buf, uint32_t len){
    for(uint32_t i=0; i < len; i+=16){
       printf("%4.4X: ", i);
-      for(uint32_t j=0; j < 16; j++){
-         printf("%2.2X ", buf[i+j]);
+      for(uint32_t j=i; j < MIN(i+16,len); j++){
+         printf("%2.2X ", buf[j]);
       }
       printf("\n");
    }
 }
 
-int main(){
+void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32_t b){
+       #if 1
+
+       //Some kind of element header
+       //if(i==0)
+       while(b>0){
+       uint32_t type = __bswap_16(*(uint16_t*)&buf[pos+2]) & 0xFF; 
+       if(type>96 || !stringidx[type])
+          return;
+
+       uint32_t esz = sizes32[type];
+ 
+       uint32_t nelem=1; //if !arrayType
+
+       uint32_t rel_pos = ((i+1)<<16) + pos-seg_start;
+       printf("El Type: %x,%s, TS: %d@%lx:%lx  %x\n", type, types[stringidx[type]], esz, rel_pos,pos, __bswap_32(*(uint32_t*)&buf[pos]));
+       assert(*(uint16_t*)&buf[pos] == 0);
+
+       //assert(typeMap.find(type) != typeMap.end());
+
+       pos+=0x4;
+       b-=0x4;
+
+       if(arrayTypes.find(type)!=arrayTypes.end()){
+          esz = __bswap_32(*(uint32_t*)&buf[pos]) - 4;
+          rel_pos+=8;
+          if(type==1){ //string
+             printf("String: %x %s\n", esz, &buf[pos+8]);
+             new SList(rel_pos,"\"" + string((char*)&buf[pos+8]) + "\"");
+          }
+       }
+
+       if(type==32){
+            uint32_t aloc = __bswap_32(*(uint32_t*)&buf[pos]) &0xFFFFF;
+            printf("Aloc: %X\n", aloc);
+            vector<SList*> args;
+            if(aloc)
+               args.push_back(new SList(true,aloc-1));
+            new SList(rel_pos,"symbol",&args);
+       }
+
+       if(type==4){
+            int32_t aloc = __bswap_32(*(int32_t*)&buf[pos]);
+            new SList(rel_pos,to_string(aloc));
+       }
+
+       if(type==0){
+            int8_t aloc = *(int8_t*)&buf[pos];
+            new SList(rel_pos,to_string(aloc));
+       }
+
+       if(type==10){
+            uint64_t aloc = __bswap_64(*(uint64_t*)&buf[pos]);
+            double d = *(double*)&aloc;
+            new SList(rel_pos,format_double(d));
+       }
+
+       if(type==19){
+            uint32_t aloc = __bswap_32(*(uint32_t*)&buf[pos]);
+            esz += __bswap_32(*(uint32_t*)&buf[pos+4])*4;
+            printf("Aloc: %X\n", aloc);
+            vector<SList*> args;
+            if(aloc)
+               args.push_back(new SList(true,aloc-1));
+            new SList(rel_pos,"freeObject",&args);
+       }
+     
+
+       if(type==20){
+            uint32_t aloc = __bswap_32(*(uint32_t*)&buf[pos]);
+            uint32_t bloc = __bswap_32(*(uint32_t*)&buf[pos+0xc]);
+            uint32_t cloc = __bswap_32(*(uint32_t*)&buf[pos+0x10]);
+            printf("Aloc: %X %X %X\n", aloc, bloc, cloc);
+            vector<SList*> args;
+            if(aloc)
+               args.push_back(new SList(true,aloc-1));
+            if(bloc && !(bloc>>24))
+               args.push_back(new SList(true, bloc-1));
+            if(cloc)
+               args.push_back(new SList(true, cloc-1));
+            new SList(rel_pos,"property",&args);
+        }
+
+        if(type==33){
+            uint32_t aloc = __bswap_32(*(uint32_t*)&buf[pos]);
+            uint32_t bloc = __bswap_32(*(uint32_t*)&buf[pos+4]);
+            printf("Aloc: %X %X\n", aloc, bloc);
+            vector<SList*> args;
+            if(aloc)
+               args.push_back(new SList(true,aloc-1));
+            if(bloc)
+               args.push_back(new SList(true, bloc-1));
+            new SList(rel_pos,"list",&args);
+        }
+ 
+        if(frompos.find(rel_pos) == frompos.end()){
+            new SList(rel_pos,string("unknown_") + types[stringidx[type]]);
+        }
+
+        printbytes(&buf[pos], esz);
+
+        pos+=esz;
+        b-=esz;
+     }
+}
+
+SList* consume_pointer(uint32_t *pos, int32_t *b, uint8_t *buf, bool force=false){
+   if(buf[(*pos)+1] || force){
+      uint32_t aloc = __bswap_32(*(uint32_t*)&buf[*pos]);
+      *pos+=4;
+      *b-=4;
+      return new SList(true,aloc-1);
+   }else{
+      *pos+=2;
+      *b-=2;
+   }
+   return new SList(*pos,"nil");
+}
+
+SList* consume_byte(uint32_t *pos, int32_t *b, uint8_t *buf){
+   *pos+=1;
+   *b-=1;
+   return new SList(*pos,string("byte_") + to_string(buf[*pos-1]));
+}
+
+
+void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32_t b){
+       //Some kind of element header
+       //if(i==0)
+   while(b>0){
+       vector<SList*> args;
+       uint32_t opos=pos;
+
+       uint32_t type = buf[pos]; 
+       if(type>96 || !stringidx[type]){
+          assert(false);
+          return;
+       }
+
+       uint32_t esz = sizesc32[type];
+ 
+       uint32_t nelem=1; //if !arrayType
+
+       uint32_t rel_pos = ((i+1)<<16) + pos-seg_start;
+       printf("El Type: %x,%s, TS: %d@%lx:%lx  %x\n", type, types[stringidx[type]], esz, rel_pos,pos, __bswap_32(*(uint32_t*)&buf[pos]));
+
+       //assert(typeMap.find(type) != typeMap.end());
+
+       pos+=0x1;
+       b-=0x1;
+   
+
+       if(arrayTypes.find(type)!=arrayTypes.end()){
+          esz = __bswap_16(*(uint16_t*)&buf[pos]) - 12;
+          pos+=2;
+          b-=2;
+          rel_pos+=8;
+          if(type==1){ //string
+             printf("String: %dd %s\n", esz, &buf[pos]);
+             new SList(rel_pos,"\"" + string((char*)&buf[pos]) + "\"");
+          }
+          pos+=esz;
+          b-=esz;
+          esz=0;
+       }else if(type==0){ //char
+            int8_t aloc = *(int8_t*)&buf[pos];
+            esz=1;
+            new SList(rel_pos,to_string(aloc));
+       }else if(type==4){ //int
+            int32_t aloc = __bswap_32(*(int32_t*)&buf[pos]);
+            new SList(rel_pos,to_string(aloc));
+       }else if(type==10){ //double
+            uint64_t aloc = __bswap_64(*(uint64_t*)&buf[pos]);
+            double d = *(double*)&aloc;
+            new SList(rel_pos,format_double(d));
+       }else if(type==16){//rcb
+           esz=0;
+           args.push_back(consume_pointer(&pos,&b,buf,true));
+           args.push_back(consume_pointer(&pos,&b,buf,true));
+           args.push_back(consume_byte(&pos,&b,buf));
+           args.push_back(consume_byte(&pos,&b,buf));
+           args.push_back(consume_pointer(&pos,&b,buf,true));
+           args.push_back(consume_pointer(&pos,&b,buf,true));
+           args.push_back(consume_pointer(&pos,&b,buf,true));
+           args.push_back(consume_pointer(&pos,&b,buf,true));
+           args.push_back(consume_pointer(&pos,&b,buf,true));
+           args.push_back(consume_pointer(&pos,&b,buf));
+           args.push_back(consume_pointer(&pos,&b,buf,true));
+       }else if(type==18){
+           esz=0;
+       }else if(type==19){
+           esz=4;
+       }else if(type==20){ //property
+            esz=0;
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            uint8_t ptype = buf[pos++];
+            b-=1;
+            args.push_back(consume_byte(&pos,&b,buf));
+            if(ptype==0xa){
+               args.push_back(consume_pointer(&pos,&b,buf,true));
+            }else{
+               args.push_back(consume_pointer(&pos,&b,buf,true));
+               args.push_back(consume_pointer(&pos,&b,buf));
+            }
+            new SList(rel_pos,"property",&args);
+        }else if(type==21){//range
+            esz=0;
+            args.push_back(consume_byte(&pos,&b,buf));
+            args.push_back(consume_byte(&pos,&b,buf));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            new SList(rel_pos,"range",&args);
+        }else if(type==22){
+            esz=0;
+            args.push_back(consume_pointer(&pos,&b,buf));
+            args.push_back(consume_byte(&pos,&b,buf));
+            args.push_back(consume_pointer(&pos,&b,buf));
+            new SList(rel_pos,"group",&args);
+        }else if(type==23){
+            esz=0;
+            args.push_back(consume_pointer(&pos,&b,buf));
+            args.push_back(consume_pointer(&pos,&b,buf));
+            args.push_back(consume_pointer(&pos,&b,buf));
+            args.push_back(consume_pointer(&pos,&b,buf));
+            new SList(rel_pos,"group_member",&args);
+        }else if(type==32){
+            esz=0;
+            args.push_back(consume_pointer(&pos,&b,buf));
+            new SList(rel_pos,"symbol",&args);
+        }else if(type==33){
+            esz=0;
+            args.push_back(consume_pointer(&pos,&b,buf));
+            args.push_back(consume_pointer(&pos,&b,buf));
+            new SList(rel_pos,"list",&args);
+        }else if(type==38){ //XXparentChild
+            esz=0;
+            args.push_back(consume_pointer(&pos,&b,buf));
+            args.push_back(consume_pointer(&pos,&b,buf));
+            new SList(rel_pos,"list",&args);
+        }else if(type==52){ //zeLP
+            esz=0;
+            args.push_back(consume_byte(&pos,&b,buf));
+            args.push_back(consume_byte(&pos,&b,buf));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+        }else if(type==65){ //zeLabel
+            esz=0;
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+        }else if(type==66){ //zeArc
+            esz=0;
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+        }else if(type==68){
+            esz=0;
+            uint32_t cnt = __bswap_32(*(uint32_t*)&buf[pos]);            
+            pos+=4;
+            b-=4;
+            for(uint32_t j=0; j < cnt; j++){
+               args.push_back(consume_pointer(&pos,&b,buf,true));
+               args.push_back(consume_pointer(&pos,&b,buf,true));
+            }
+            new SList(rel_pos,"polygon",&args);
+        }else if(type==71){ //zeLine
+            esz=0;
+            uint32_t pcnt = __bswap_32(*(uint32_t*)&buf[pos]);
+            pos+=4;
+            b-=4;
+            for(uint32_t i=0; i < pcnt; i++){
+               args.push_back(consume_pointer(&pos,&b,buf,true));
+               args.push_back(consume_pointer(&pos,&b,buf,true));
+            }
+        }else if(type==74){ //zePath
+            args.push_back(consume_byte(&pos,&b,buf));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+
+            esz=0;
+            uint32_t cnt = __bswap_16(*(uint16_t*)&buf[pos]);            
+            pos+=2;
+            b-=2;
+
+
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+
+            for(uint32_t j=0; j < cnt; j++){
+               args.push_back(consume_pointer(&pos,&b,buf,true));
+               args.push_back(consume_pointer(&pos,&b,buf,true));
+            }
+            new SList(rel_pos,"polygon",&args);
+        }else if(type==80){ //zeNet
+            esz=0;
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));  
+       }else if(type==81){ //zeSig
+            esz=0;
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));             
+        }else if(type==82){ //zeTerm
+            esz=0;
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_byte(&pos,&b,buf));
+            args.push_back(consume_pointer(&pos,&b,buf));
+            args.push_back(consume_pointer(&pos,&b,buf));
+        }else if(type==83){ //zePin
+            esz=0;
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_byte(&pos,&b,buf));
+            args.push_back(consume_byte(&pos,&b,buf));
+            args.push_back(consume_byte(&pos,&b,buf));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+        }else if(type==84){ //zeInstTerm
+            esz=0;
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_byte(&pos,&b,buf));
+            args.push_back(consume_byte(&pos,&b,buf));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+        }else if(type==89){ //zeFig
+            esz=0;
+            uint8_t ftype = buf[pos];
+            pos++;
+            b--;
+            args.push_back(consume_byte(&pos,&b,buf));
+            uint8_t flen = buf[pos];
+            pos++;
+            b--;
+            args.push_back(consume_byte(&pos,&b,buf));
+
+//0000: 59 0A FC E6 00 00 05 0A 59 00 01 00 2D 59 05 FC 09 00 00 00 1B **58 00 00 05 
+
+            if(ftype==5 || ftype == 0x22 || ftype==0x1a || ftype==0xb){
+               for(uint32_t j=0; j < 5; j++){
+                  args.push_back(consume_pointer(&pos,&b,buf,true));
+               }
+            }else if(ftype==9 || ftype==0x21 || ftype==0xd){
+               for(uint32_t j=0; j < 6; j++){
+                  args.push_back(consume_pointer(&pos,&b,buf,true));
+               }
+            }else{
+               args.push_back(consume_pointer(&pos,&b,buf,true));
+               args.push_back(consume_pointer(&pos,&b,buf,true));
+            }
+        }else if(type==91){ //zeTextDisplay
+            esz=0;
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_byte(&pos,&b,buf));
+            args.push_back(consume_byte(&pos,&b,buf));
+            args.push_back(consume_byte(&pos,&b,buf));
+            args.push_back(consume_byte(&pos,&b,buf));
+
+        }else if(type == 92){ //zeInstHeader
+            esz=0x24;
+            esz=0;
+            args.push_back(consume_pointer(&pos,&b,buf));
+            args.push_back(consume_pointer(&pos,&b,buf));
+            args.push_back(consume_pointer(&pos,&b,buf));
+            args.push_back(consume_pointer(&pos,&b,buf));
+            args.push_back(consume_pointer(&pos,&b,buf));
+
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+        }else if(type == 93){ //zeMosaic
+            esz=0;
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+
+            args.push_back(consume_byte(&pos,&b,buf));
+            args.push_back(consume_byte(&pos,&b,buf));
+
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+
+        }else if(type == 94){ //zeAnyInst
+            esz=0;
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+
+            args.push_back(consume_byte(&pos,&b,buf));
+            args.push_back(consume_byte(&pos,&b,buf));
+
+        }else{
+            printf("Unparsed type: 0x%x %d\n", type, type);
+            printbytes(&buf[opos], esz+(pos-opos));
+            assert(false);
+        }
+
+        if(frompos.find(rel_pos) == frompos.end()){
+            new SList(rel_pos,string("unknown_") + types[stringidx[type]]);
+        }
+
+
+        printbytes(&buf[opos], esz+(pos-opos));
+
+        pos+=esz;
+        b-=esz;
+   }
+}
+
+int main(int argc, char** argv){
    //Load entire file into memory
-   FILE* f = fopen("PROP.XX","r");
+   //FILE* f = fopen("LAYOUT.CDB","r");
+   FILE* f = fopen(argv[1],"r");
+
    fseek(f,0,SEEK_END);
    size_t sz = ftell(f);
    fseek(f,0,SEEK_SET);
@@ -257,10 +709,11 @@ int main(){
    maybe_len = __bswap_32(maybe_len);
    nsegs = __bswap_32(nsegs);
  
-   printf("SrcID: %X, Date: %s, Data Len: %d, Segments %X, Endian: %X, Txt: %s\n", srcid, date, maybe_len, nsegs, endian, text0);
+   printf("SrcID: %X, Date: %s, Data Len: %d, Segments %X, Endian: %X, Txt: %s @%s\n", srcid, date, maybe_len, nsegs, endian, text0, argv[1]);
 
    uint64_t pos=0x80;
    for(uint32_t i=0; i < nsegs; i++){
+       uint64_t seg_start=pos;
        //Seg is 0x40 bytes
        uint32_t e = __bswap_32(*(uint32_t*)&buf[pos+0x4]); //Checksum
 
@@ -272,12 +725,11 @@ int main(){
 
        uint32_t compress = buf[pos+0x20];
        //if(0x20&1) compressed
-       printf("Segment %x %x %x %x %lx %x %x, DCL: %x\n", a, b, c, d, pos, e, compress, d-0x18);
+       printf("Segment %x L:%x %x %x %lx %x %x, DCL: %x\n", a, b, c, d, pos, e, compress, d-0x18);
+
+//       printbytes(&buf[pos], 0x50);
 
        printbytes(&buf[pos+0x0], 0x40);
-
-       pos+=0x40;
-       printbytes(&buf[pos], 0x40);
 
        //Segment checksum
        uint32_t sum=0;
@@ -286,26 +738,85 @@ int main(){
        }
        printf("Sum: %x\n", sum);
 
-       //Some kind of element header
-       uint32_t type = __bswap_16(*(uint16_t*)&buf[pos+0x2]);
-       uint32_t esz = sizes32[type];
-       uint32_t ea = __bswap_32(*(uint32_t*)&buf[pos + 0x14]);
-
-       
-for(int j=0x18; j < 0x19; j++){
-       uint32_t eb = __bswap_16(*(uint16_t*)&buf[pos+0xe +j]);
-       uint32_t ec = __bswap_16(*(uint16_t*)&buf[pos+0x18+j]);
-       uint32_t ed = __bswap_16(*(uint16_t*)&buf[pos+0x28+j]);
-       uint32_t ee = __bswap_16(*(uint16_t*)&buf[pos+0x12+j]);
-
-       printf("El Type: %x,%s, TS: %d, %x %x %x %x 12:%x\n", type, types[stringidx[type]], esz, ea, eb, ec, ed,ee);
+       pos+=0x40;
+if(argc<3 || i==atoi(argv[2])){
+       if((compress&1)==0){
+          assert(false);
+          parseseg(buf,seg_start,pos,i, b);
+       }else
+          parsecseg(buf,seg_start,pos,i, b);
+}
+       pos+=b;
 }
    //    assert((d-0x18) % esz == 0);
+#endif
 
-       pos+=b;
+   printf("%x %x\n", pos, sz);
+   
+   uint32_t dangles=0;
+   vector<SList*> allobjs;
+   vector<uint32_t> tgts, refs;
+   for(auto it=frompos.begin(); it!=frompos.end(); it++){
+      //printf("%X\n", (*it).first);
+      if((*it).first){
+        allobjs.push_back((*it).second);
+        tgts.push_back((*it).second->m_ofst);
+      }
    }
+
+   //exit(0);
+   for(auto it=allobjs.begin(); it!=allobjs.end(); it++){
+      if((*it)->m_tgt)
+         continue;
+      for(auto it2=(*it)->m_list.begin(); it2!=(*it)->m_list.end(); it2++){
+         if(!(*it2)->m_tgt)
+           continue;
+         uint32_t tgt=(*it2)->m_tgt+0x40-4;
+         refs.push_back(tgt);        
+         SList* stgt = (*frompos.find(tgt)).second;
+         if(!stgt){
+           dangles++;
+           continue;
+         }
+         *it2=stgt;
+         consumed.insert(stgt->m_ofst);
+      }
+   }
+
+#if 1
+   sort(tgts.begin(), tgts.end());
+   sort(refs.begin(), refs.end());
+   printf("Tgts:\n");
+   uint32_t last=0;
+   uint32_t base=0x40000;
+   for(auto it=tgts.begin(); it!=tgts.end(); it++)
+      if(*it>=base && *it<base+0x10000 && *it != last){
+         printf("%X %X\n", *it, *it - last);
+         last=*it;
+      }
+   printf("Refs:\n");
+   last=0;
+   for(auto it=refs.begin(); it!=refs.end(); it++)
+      if(*it>=base && *it<base + 0x10000 && *it != last){
+         printf("%X %X\n", *it, *it - last);
+         last=*it;
+      }
+#endif
+
 #if 0
 
+   for(auto it=allobjs.begin(); it!=allobjs.end(); it++){
+      //if(!(*it)->m_list.size())
+      //   continue;
+      if(consumed.find((*it)->m_ofst) != consumed.end())
+         continue;
+      print_reset(0);
+      (*it)->print();
+      printf("\n");
+   }
+#endif
+
+#if 0
    printf("%ld\n", sizeof(types)/sizeof(char*));
 
    for(int i=0; i < 97; i++){
