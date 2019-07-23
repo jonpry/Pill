@@ -35,6 +35,8 @@
 #include <filesystem>
 
 #define MAX(a,b) ((a)>(b)?(a):(b))
+#define MIN(a,b) ((a)<(b)?(a):(b))
+
 
 using namespace std;
 namespace fs = std::filesystem;
@@ -42,6 +44,8 @@ namespace fs = std::filesystem;
 class SList;
 
 extern set<uint64_t> consumed;
+extern map<uint64_t,SList*> frompos;
+
 
 void print_token(string s, SList *t,bool dont_print=false);
 void print_reset(FILE *f);
@@ -60,12 +64,14 @@ string to_scientific(const T a_value, const int n = 11)
 class SList {
  public:
    SList(uint64_t ofst, string atom="", vector<SList*> *slist=0){
+      frompos[ofst] = this;
       m_atom = atom;
       m_forcebreak=false;
       m_noparen=false;
       m_funccall=false;
       m_forceparen=false;
       m_ofst = ofst;
+      m_tgt = 0;
       if(slist){
          m_list = *slist;  
          for(auto it=m_list.begin(); it!=m_list.end(); it++){
@@ -74,6 +80,12 @@ class SList {
          }
       }
    }
+
+   SList(bool has_tgt, uint64_t tgt){
+      m_tgt = tgt;
+      m_atom = "dangling_" + to_string(tgt);
+   }
+
 
    ~SList(){
       for(auto it=m_list.begin(); it!=m_list.end(); it++){
@@ -103,7 +115,7 @@ class SList {
         print_token(")",this,m_noparen);
    }
 
-   uint64_t m_ofst;
+   uint64_t m_ofst, m_tgt;
    string m_atom;
    bool m_forcebreak, m_noparen, m_funccall, m_forceparen;
    vector<SList*> m_list;
@@ -115,6 +127,8 @@ class Func {
 
    uint32_t m_len, m_args;
 };
+
+string format_double(double d);
 
 void rename(string a, string b, SList *l, void(*lambda)(SList*) =0);
 void renames(string a, string b, SList *l, void(*lambda)(SList*) =0);

@@ -32,6 +32,7 @@ uint64_t orig_strtab, strtab, arytab;
 uint8_t *buf;
 fs::path output_dir;
 set<uint64_t> consumed;
+map<uint64_t,SList*> frompos;
 
 const char *codeNames[] = {"Inline Literal", "FuncCall", "KCompile", "SCompile",  
                            "GetProp", "PutProp", "Pop", "Push", 
@@ -171,15 +172,7 @@ SList* print_obj(uint64_t old_adr){
          } break;
       case FLO_TYPE: {
          double d = *(double*)&obj[8];
-         printf("%f", d);
-         char flo[64];
-         sprintf(flo,"%.15g",d);
-         bool has_dec = false;
-         for(int i=0; i < strlen(flo); i++)
-            if(flo[i] == '.' || flo[i] == 'e') 
-              has_dec = true;
-         if(!has_dec)
-            sprintf(flo+strlen(flo),".0");
+         string flo = format_double(d);
          return new SList(old_adr,flo);
          } break;
       case STR_TYPE: {

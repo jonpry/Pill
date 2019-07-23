@@ -384,7 +384,7 @@ SList* consume_byte(uint32_t *pos, int32_t *b, uint8_t *buf){
 }
 
 
-void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32_t b){
+void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32_t b, const char* fname){
        //Some kind of element header
        //if(i==0)
    while(b>0){
@@ -393,6 +393,8 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
 
        uint32_t type = buf[pos]; 
        if(type>96 || !stringidx[type]){
+          printf("Bad type %x %d\n", type, type);
+          //exit(0);
           assert(false);
           return;
        }
@@ -402,27 +404,35 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
        uint32_t nelem=1; //if !arrayType
 
        uint32_t rel_pos = ((i+1)<<16) + pos-seg_start;
-       printf("El Type: %x,%s, TS: %d@%lx:%lx  %x\n", type, types[stringidx[type]], esz, rel_pos,pos, __bswap_32(*(uint32_t*)&buf[pos]));
+       printf("El Type: %x,%s, TS: %d@%lx:%lx  %x in %s\n", type, types[stringidx[type]], esz, rel_pos,pos, __bswap_32(*(uint32_t*)&buf[pos]), fname);
 
        //assert(typeMap.find(type) != typeMap.end());
 
        pos+=0x1;
        b-=0x1;
    
-
-       if(arrayTypes.find(type)!=arrayTypes.end()){
+       if(type==37){ //dbbox array
+           esz=0;
+           args.push_back(consume_pointer(&pos,&b,buf));
+       }else if(arrayTypes.find(type)!=arrayTypes.end()){
           esz = __bswap_16(*(uint16_t*)&buf[pos]) - 12;
           pos+=2;
           b-=2;
           rel_pos+=8;
-          if(type==1){ //string
-             printf("String: %dd %s\n", esz, &buf[pos]);
-             new SList(rel_pos,"\"" + string((char*)&buf[pos]) + "\"");
+
+          if(type==0xd){ 
+             for(uint32_t i=0; i < esz/4; i++)
+                args.push_back(consume_pointer(&pos,&b,buf));
+          }else{
+             if(type==1){ //string
+                printf("String: %dd %s\n", esz, &buf[pos]);
+                new SList(rel_pos,"\"" + string((char*)&buf[pos]) + "\"");
+             }
+             pos+=esz;
+             b-=esz;
           }
-          pos+=esz;
-          b-=esz;
-          esz=0;
-       }else if(type==0){ //char
+          esz=0; 
+      }else if(type==0){ //char
             int8_t aloc = *(int8_t*)&buf[pos];
             esz=1;
             new SList(rel_pos,to_string(aloc));
@@ -433,6 +443,9 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             uint64_t aloc = __bswap_64(*(uint64_t*)&buf[pos]);
             double d = *(double*)&aloc;
             new SList(rel_pos,format_double(d));
+       }else if(type==12){ //pointer
+           esz=0;
+           args.push_back(consume_pointer(&pos,&b,buf,true));
        }else if(type==16){//rcb
            esz=0;
            args.push_back(consume_pointer(&pos,&b,buf,true));
@@ -443,7 +456,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
            args.push_back(consume_pointer(&pos,&b,buf,true));
            args.push_back(consume_pointer(&pos,&b,buf,true));
            args.push_back(consume_pointer(&pos,&b,buf,true));
-           args.push_back(consume_pointer(&pos,&b,buf,true));
+           args.push_back(consume_pointer(&pos,&b,buf));
            args.push_back(consume_pointer(&pos,&b,buf));
            args.push_back(consume_pointer(&pos,&b,buf,true));
        }else if(type==18){
@@ -586,7 +599,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             args.push_back(consume_pointer(&pos,&b,buf,true));
             args.push_back(consume_byte(&pos,&b,buf));
             args.push_back(consume_byte(&pos,&b,buf));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf));
             args.push_back(consume_pointer(&pos,&b,buf,true));
         }else if(type==89){ //zeFig
             esz=0;
@@ -599,13 +612,15 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             b--;
             args.push_back(consume_byte(&pos,&b,buf));
 
+            printf("FIG %x\n", ftype);
+
 //0000: 59 0A FC E6 00 00 05 0A 59 00 01 00 2D 59 05 FC 09 00 00 00 1B **58 00 00 05 
 
-            if(ftype==5 || ftype == 0x22 || ftype==0x1a || ftype==0xb){
+            if(ftype==5 || ftype == 0x22 || ftype==0x1a || ftype==0xb || ftype==0x23){
                for(uint32_t j=0; j < 5; j++){
                   args.push_back(consume_pointer(&pos,&b,buf,true));
                }
-            }else if(ftype==9 || ftype==0x21 || ftype==0xd){
+            }else if(ftype==9 || ftype==0x21 || ftype==0xd || ftype==0x25){
                for(uint32_t j=0; j < 6; j++){
                   args.push_back(consume_pointer(&pos,&b,buf,true));
                }
@@ -615,16 +630,17 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             }
         }else if(type==91){ //zeTextDisplay
             esz=0;
+
             args.push_back(consume_pointer(&pos,&b,buf,true));
             args.push_back(consume_pointer(&pos,&b,buf,true));
             args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_byte(&pos,&b,buf));
-            args.push_back(consume_byte(&pos,&b,buf));
-            args.push_back(consume_byte(&pos,&b,buf));
-            args.push_back(consume_byte(&pos,&b,buf));
+
+
+            uint8_t flen = buf[pos];
+            pos++;
+            b--;
+            for(uint32_t i=0; i < MAX(flen,0xF); i++)
+               args.push_back(consume_byte(&pos,&b,buf));
 
         }else if(type == 92){ //zeInstHeader
             esz=0x24;
@@ -651,8 +667,12 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
 
             args.push_back(consume_byte(&pos,&b,buf));
             args.push_back(consume_byte(&pos,&b,buf));
+            args.push_back(consume_byte(&pos,&b,buf));
+            args.push_back(consume_byte(&pos,&b,buf));
 
             args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_pointer(&pos,&b,buf,true));
+
             args.push_back(consume_pointer(&pos,&b,buf,true));
             args.push_back(consume_pointer(&pos,&b,buf,true));
 
@@ -666,11 +686,17 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             args.push_back(consume_pointer(&pos,&b,buf,true));
 
             args.push_back(consume_byte(&pos,&b,buf));
-            args.push_back(consume_byte(&pos,&b,buf));
-
+            uint8_t ftype = buf[pos];
+            pos++;
+            b--;
+            if(ftype){
+               args.push_back(consume_byte(&pos,&b,buf));
+               args.push_back(consume_byte(&pos,&b,buf));
+            }
         }else{
             printf("Unparsed type: 0x%x %d\n", type, type);
             printbytes(&buf[opos], esz+(pos-opos));
+            //exit(0);
             assert(false);
         }
 
@@ -744,7 +770,7 @@ if(argc<3 || i==atoi(argv[2])){
           assert(false);
           parseseg(buf,seg_start,pos,i, b);
        }else
-          parsecseg(buf,seg_start,pos,i, b);
+          parsecseg(buf,seg_start,pos,i, b, argv[1]);
 }
        pos+=b;
 }

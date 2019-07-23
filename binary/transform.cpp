@@ -17,6 +17,19 @@
 
 #include "main.h"
 
+string format_double(double d){
+   printf("%f", d);
+   char flo[64];
+   sprintf(flo,"%.15g",d);
+   bool has_dec = false;
+   for(int i=0; i < strlen(flo); i++)
+      if(flo[i] == '.' || flo[i] == 'e') 
+         has_dec = true;
+   if(!has_dec)
+      sprintf(flo+strlen(flo),".0");
+   return string(flo);
+}
+
 void findAndReplaceAll(std::string & data, std::string toSearch, std::string replaceStr) {
     size_t pos = data.find(toSearch);
     while( pos != std::string::npos) {
