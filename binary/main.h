@@ -44,6 +44,7 @@ namespace fs = std::filesystem;
 class SList;
 
 extern set<uint64_t> consumed;
+extern set<SList*> printed;
 extern map<uint64_t,SList*> frompos;
 
 
@@ -59,6 +60,15 @@ string to_scientific(const T a_value, const int n = 11)
     out.precision(n);
     out << scientific << a_value;
     return out.str();
+}
+
+
+static string to_hex(uint64_t to_convert){
+    std::string result;
+    std::stringstream ss;
+    ss << std::hex <<to_convert;
+    ss >> result;
+    return result;
 }
 
 class SList {
@@ -83,7 +93,7 @@ class SList {
 
    SList(bool has_tgt, uint64_t tgt){
       m_tgt = tgt;
-      m_atom = "dangling_" + to_string(tgt);
+      m_atom = "dangling_" + to_hex(tgt);
    }
 
 
@@ -95,6 +105,7 @@ class SList {
    }
 
    void print(){
+     printed.insert(this);
      if(m_atom.size())
         print_token(escape(m_atom),this);
      else
@@ -106,9 +117,12 @@ class SList {
            print_token("nil",this);
         }
      for(auto it=m_list.begin(); it!=m_list.end(); it++){
-        if(*it)
-           (*it)->print();
-        else
+        if(*it){
+           if(printed.find(*it)==printed.end())
+              (*it)->print();
+           else
+              print_token("SELF!!!!",this);
+        }else
            print_token("NULLPTR!!!!",this);
      }
      if(m_list.size() || m_forceparen)

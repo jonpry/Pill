@@ -21,10 +21,14 @@ static int indent=0;
 static int pos=0;
 static int since_open=0;
 static FILE* output_file;
+
+set<SList*> printed;
+
 void print_reset(FILE *f){
    indent = 0;
    pos = 0;
    output_file = f;
+   printed.clear();
 }
 
 void print_token(string s, SList *t, bool dont_print){

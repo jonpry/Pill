@@ -27,7 +27,7 @@ const char *types[] = { "0", "char", "short", "int",
                         
                         "PCB", "XXString", "XXfreeObject", "XXfreeObject2", 
                         "XXgroup", "XXgroupMember", "XXilList", "XXilSymbol", 
-                        "XXparentChild", "XXpropVal", "XXpropery", "XXrange", 
+                        "XXparentChild", "XXpropVal", "XXproperty", "XXrange", 
                         "XXrcb", "aBoolean", "aDouble", "aFileName", 
 
                         "aFloat", "aIlExpr", "aInt", "aNetSet",
@@ -201,18 +201,18 @@ zeMagInst       	    95			16
 zeLrgSigAryInfo 	    96			 8
 */
 
-uint32_t sizes32[] = { 4, 1, 4, 2, 4, 4, 4, 4,  //0
-                     4, 4, 8, 8, 4, 4, 1, 1,  //0x8
-                     0x24, 0, 4, 0x8, 0xe, 0x10, 0x10, 0x10, //0x10 
-                     0, 0, 0, 0, 0, 0, 0, 0, //0x18
-                     4, 8, 8, 8, 0x10, 0x10, 8, 0, //0x20
-                     4, 0, 0, 0, 0, 0, 0, 0, //0x28
-                     0, 0, 0x110-0xe8-4, 0x44, 0x1c, 0, 0, 0, //0x30
-                     0, 0, 0, 0, 0x20, 0x1c, 0x30, 2, //0x38
-                     2, 0x14, 0x28, 0x10, 0xc, 0x10, 0, 0xc, //0x40
-                     0, 0, 0x18, 0, 0, 0, 0, 0, //0x48
-                     0x1a7, 0, 0, 0, 0x20, 0x10, 0x14, 0x14, //0x50
-                     0x14, 0x4b, 8, 0x14, 0x30, 0x20, 0x1c, 0x2c,
+uint32_t sizes32[] = { 1, 1, 2, 2, 4, 4, 4, 4, 
+                     4, 4, 8, 8, 4, 4, 1, 1, 
+                     0x24, 0, 4, 0xc, 0x14, 0x10, 0x10, 0x14, 
+                     0, 0, 0, 0, 0, 0, 0, 0,
+                     4, 8, 8, 8, 0x10, 0x10, 8, 0,
+                     4, 0, 0, 0, 0, 0, 0, 0,
+                     0, 0, 0x24, 0x44, 0x1c, 0, 0, 0,
+                     0, 0, 0, 0, 0x20, 0x1c, 0x30, 2,
+                     2, 0x14, 0x28, 0x10, 0xc, 0x10, 0, 0xc,
+                     0, 0, 0x18, 0, 0, 0, 0, 0,
+                     0, 0, 0, 0, 0x20, 0x10, 0x14, 0x14,
+                     0x14, 0xc, 8, 0x14, 0x30, 0x20, 0x1c, 0x2c,
                      0x44, 0x30, 0x20, 8};
 
 
@@ -236,7 +236,7 @@ uint32_t stringidx[] = {1, 1, 2, 2, 3, 3, 4, 4, //0
                         0, 0, 0, 0, 0, 0, 0, 0, //0x18
                         0x17, 0x16, 0x4B, 0x4B, 0x4A, 0x4A, 0x18, 0,  //0x20
                         0x11, 0, 0, 0, 0, 0, 0, 0, //0x28
-                        0, 0, 0x2e, 0x150, 0x145, 0, 0, 0, //0x30
+                        0, 0, 315, 0x150, 0x145, 0, 0, 0, //0x30
                         0, 0, 0, 0, 0x14f, 0x13f, 0x137, 0x14c, //0x38
                         0x14c, 0x146, 0x13a, 0x13c, 0x15a, 0x154, 0, 0x147, //0x40 
                         0, 0, 0x155, 0, 0, 0, 0, 0, //0x48
@@ -272,8 +272,8 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
  
        uint32_t nelem=1; //if !arrayType
 
-       uint32_t rel_pos = ((i+1)<<16) + pos-seg_start;
-       printf("El Type: %x,%s, TS: %d@%lx:%lx  %x\n", type, types[stringidx[type]], esz, rel_pos,pos, __bswap_32(*(uint32_t*)&buf[pos]));
+       uint32_t rel_pos = ((i+1)<<16) + pos-seg_start - 0x40 + 0x4 + 1;
+       printf("El Type: %x %dd,%s, TS: %d@%lx:%lx  %x\n", type, type, types[stringidx[type]], esz, rel_pos,pos, __bswap_32(*(uint32_t*)&buf[pos]));
        assert(*(uint16_t*)&buf[pos] == 0);
 
        //assert(typeMap.find(type) != typeMap.end());
@@ -295,7 +295,7 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
             printf("Aloc: %X\n", aloc);
             vector<SList*> args;
             if(aloc)
-               args.push_back(new SList(true,aloc-1));
+               args.push_back(new SList(true,aloc));
             new SList(rel_pos,"symbol",&args);
        }
 
@@ -321,7 +321,7 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
             printf("Aloc: %X\n", aloc);
             vector<SList*> args;
             if(aloc)
-               args.push_back(new SList(true,aloc-1));
+               args.push_back(new SList(true,aloc));
             new SList(rel_pos,"freeObject",&args);
        }
      
@@ -333,11 +333,11 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
             printf("Aloc: %X %X %X\n", aloc, bloc, cloc);
             vector<SList*> args;
             if(aloc)
-               args.push_back(new SList(true,aloc-1));
+               args.push_back(new SList(true,aloc));
             if(bloc && !(bloc>>24))
-               args.push_back(new SList(true, bloc-1));
+               args.push_back(new SList(true, bloc));
             if(cloc)
-               args.push_back(new SList(true, cloc-1));
+               args.push_back(new SList(true, cloc));
             new SList(rel_pos,"property",&args);
         }
 
@@ -347,9 +347,9 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
             printf("Aloc: %X %X\n", aloc, bloc);
             vector<SList*> args;
             if(aloc)
-               args.push_back(new SList(true,aloc-1));
+               args.push_back(new SList(true,aloc));
             if(bloc)
-               args.push_back(new SList(true, bloc-1));
+               args.push_back(new SList(true, bloc));
             new SList(rel_pos,"list",&args);
         }
  
@@ -364,29 +364,45 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
      }
 }
 
-SList* consume_pointer(uint32_t *pos, int32_t *b, uint8_t *buf, bool force=false){
+SList* consume_pointer(uint32_t *pos, int32_t *b, uint8_t *buf, bool force=false, uint32_t *rel_pos=0){
+   SList *ret=0;
    if(buf[(*pos)+1] || force){
       uint32_t aloc = __bswap_32(*(uint32_t*)&buf[*pos]);
       *pos+=4;
       *b-=4;
-      return new SList(true,aloc-1);
+      ret = new SList(true,aloc);
    }else{
       *pos+=2;
       *b-=2;
+      ret = new SList(0,"nil");
    }
-   return new SList(*pos,"nil");
+
+   if(rel_pos){
+     *rel_pos += 4;
+   }
+
+   return ret;
 }
+
+SList* consume_u32(uint32_t *pos, int32_t *b, uint8_t *buf){
+   uint32_t aloc = __bswap_32(*(uint32_t*)&buf[*pos]);
+   *pos+=4;
+   *b-=4;
+   return new SList(0,"0x" + to_hex(aloc));
+}
+
 
 SList* consume_byte(uint32_t *pos, int32_t *b, uint8_t *buf){
    *pos+=1;
    *b-=1;
-   return new SList(*pos,string("byte_") + to_string(buf[*pos-1]));
+   return new SList(0,string("byte_") + to_string(buf[*pos-1]));
 }
 
 
 void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32_t b, const char* fname){
        //Some kind of element header
        //if(i==0)
+   uint32_t rel_pos = ((i+1)<<16)+1;
    while(b>0){
        vector<SList*> args;
        uint32_t opos=pos;
@@ -402,9 +418,10 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
        uint32_t esz = sizesc32[type];
  
        uint32_t nelem=1; //if !arrayType
+ 
+       rel_pos+=4;
 
-       uint32_t rel_pos = ((i+1)<<16) + pos-seg_start;
-       printf("El Type: %x,%s, TS: %d@%lx:%lx  %x in %s\n", type, types[stringidx[type]], esz, rel_pos,pos, __bswap_32(*(uint32_t*)&buf[pos]), fname);
+       printf("El Type: %x,%s, TS: %d@%lx:%lx  %x in %s\n", type, types[stringidx[type]], esz, (type==0x1?8:0)+rel_pos,pos, __bswap_32(*(uint32_t*)&buf[pos]), fname);
 
        //assert(typeMap.find(type) != typeMap.end());
 
@@ -418,7 +435,6 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
           esz = __bswap_16(*(uint16_t*)&buf[pos]) - 12;
           pos+=2;
           b-=2;
-          rel_pos+=8;
 
           if(type==0xd){ 
              for(uint32_t i=0; i < esz/4; i++)
@@ -426,12 +442,19 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
           }else{
              if(type==1){ //string
                 printf("String: %dd %s\n", esz, &buf[pos]);
-                new SList(rel_pos,"\"" + string((char*)&buf[pos]) + "\"");
+                new SList(rel_pos+8,"\"" + string((char*)&buf[pos]) + "\"");
              }
              pos+=esz;
              b-=esz;
           }
-          esz=0; 
+          if(__bswap_16(*(uint16_t*)&buf[opos+1])-4 > 0xC)
+             rel_pos+=__bswap_16(*(uint16_t*)&buf[opos+1])-4;
+          else
+             rel_pos+=0xc;
+          //rel_pos+=esz+8;
+          esz=0;
+          printbytes(&buf[opos], esz+(pos-opos));
+          continue;
       }else if(type==0){ //char
             int8_t aloc = *(int8_t*)&buf[pos];
             esz=1;
@@ -448,17 +471,18 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
            args.push_back(consume_pointer(&pos,&b,buf,true));
        }else if(type==16){//rcb
            esz=0;
-           args.push_back(consume_pointer(&pos,&b,buf,true));
+           args.push_back(consume_u32(&pos,&b,buf));
            args.push_back(consume_pointer(&pos,&b,buf,true));
            args.push_back(consume_byte(&pos,&b,buf));
            args.push_back(consume_byte(&pos,&b,buf));
-           args.push_back(consume_pointer(&pos,&b,buf,true));
-           args.push_back(consume_pointer(&pos,&b,buf,true));
-           args.push_back(consume_pointer(&pos,&b,buf,true));
-           args.push_back(consume_pointer(&pos,&b,buf,true));
+           args.push_back(consume_u32(&pos,&b,buf));
+           args.push_back(consume_u32(&pos,&b,buf));
+           args.push_back(consume_u32(&pos,&b,buf));
+           args.push_back(consume_u32(&pos,&b,buf));
+           args.push_back(consume_u32(&pos,&b,buf)); //This may be a pointer past the end
            args.push_back(consume_pointer(&pos,&b,buf));
-           args.push_back(consume_pointer(&pos,&b,buf));
            args.push_back(consume_pointer(&pos,&b,buf,true));
+            new SList(rel_pos,"rcb",&args);
        }else if(type==18){
            esz=0;
        }else if(type==19){
@@ -472,10 +496,18 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             if(ptype==0xa){
                args.push_back(consume_pointer(&pos,&b,buf,true));
             }else{
-               args.push_back(consume_pointer(&pos,&b,buf,true));
+               args.push_back(consume_u32(&pos,&b,buf));
                args.push_back(consume_pointer(&pos,&b,buf));
             }
+#if 1
+     //       if(ptype==5)
+     //          rel_pos += 4;
+            rel_pos += 0xC;
             new SList(rel_pos,"property",&args);
+
+            printbytes(&buf[opos], esz+(pos-opos));
+            continue;
+#endif
         }else if(type==21){//range
             esz=0;
             args.push_back(consume_byte(&pos,&b,buf));
@@ -503,9 +535,13 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             new SList(rel_pos,"symbol",&args);
         }else if(type==33){
             esz=0;
-            args.push_back(consume_pointer(&pos,&b,buf));
-            args.push_back(consume_pointer(&pos,&b,buf));
-            new SList(rel_pos,"list",&args);
+            uint32_t orel_pos = rel_pos;
+            args.push_back(consume_pointer(&pos,&b,buf,false,&rel_pos));
+            args.push_back(consume_pointer(&pos,&b,buf,false,&rel_pos));
+            new SList(orel_pos,"list",&args);
+
+            printbytes(&buf[opos], esz+(pos-opos));
+            continue;
         }else if(type==38){ //XXparentChild
             esz=0;
             args.push_back(consume_pointer(&pos,&b,buf));
@@ -515,9 +551,9 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             esz=0;
             args.push_back(consume_byte(&pos,&b,buf));
             args.push_back(consume_byte(&pos,&b,buf));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_u32(&pos,&b,buf));
             args.push_back(consume_pointer(&pos,&b,buf));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_u32(&pos,&b,buf));
         }else if(type==65){ //zeLabel
             esz=0;
             args.push_back(consume_pointer(&pos,&b,buf,true));
@@ -539,8 +575,8 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             pos+=4;
             b-=4;
             for(uint32_t j=0; j < cnt; j++){
-               args.push_back(consume_pointer(&pos,&b,buf,true));
-               args.push_back(consume_pointer(&pos,&b,buf,true));
+               args.push_back(consume_u32(&pos,&b,buf));
+               args.push_back(consume_u32(&pos,&b,buf));
             }
             new SList(rel_pos,"polygon",&args);
         }else if(type==71){ //zeLine
@@ -617,9 +653,10 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
 //0000: 59 0A FC E6 00 00 05 0A 59 00 01 00 2D 59 05 FC 09 00 00 00 1B **58 00 00 05 
 
             if(ftype==5 || ftype == 0x22 || ftype==0x1a || ftype==0xb || ftype==0x23){
-               for(uint32_t j=0; j < 5; j++){
-                  args.push_back(consume_pointer(&pos,&b,buf,true));
+               for(uint32_t j=0; j < 4; j++){
+                  args.push_back(consume_u32(&pos,&b,buf));
                }
+               args.push_back(consume_pointer(&pos,&b,buf,true));
             }else if(ftype==9 || ftype==0x21 || ftype==0xd || ftype==0x25){
                for(uint32_t j=0; j < 6; j++){
                   args.push_back(consume_pointer(&pos,&b,buf,true));
@@ -701,12 +738,20 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
         }
 
         if(frompos.find(rel_pos) == frompos.end()){
-            new SList(rel_pos,string("unknown_") + types[stringidx[type]]);
+            new SList(rel_pos,string("unknown_") + types[stringidx[type]],&args);
         }
 
 
         printbytes(&buf[opos], esz+(pos-opos));
-
+        uint32_t asz=esz+(pos-opos);
+        if(asz%4)
+          asz+=4-(asz%4);
+         
+        if(false){//type==20){//){//type==89){//Fig
+           rel_pos += 0x54;
+        }else{
+           rel_pos += asz-4;
+        }
         pos+=esz;
         b-=esz;
    }
@@ -767,7 +812,6 @@ int main(int argc, char** argv){
        pos+=0x40;
 if(argc<3 || i==atoi(argv[2])){
        if((compress&1)==0){
-          assert(false);
           parseseg(buf,seg_start,pos,i, b);
        }else
           parsecseg(buf,seg_start,pos,i, b, argv[1]);
@@ -797,7 +841,7 @@ if(argc<3 || i==atoi(argv[2])){
       for(auto it2=(*it)->m_list.begin(); it2!=(*it)->m_list.end(); it2++){
          if(!(*it2)->m_tgt)
            continue;
-         uint32_t tgt=(*it2)->m_tgt+0x40-4;
+         uint32_t tgt=(*it2)->m_tgt;
          refs.push_back(tgt);        
          SList* stgt = (*frompos.find(tgt)).second;
          if(!stgt){
@@ -814,22 +858,23 @@ if(argc<3 || i==atoi(argv[2])){
    sort(refs.begin(), refs.end());
    printf("Tgts:\n");
    uint32_t last=0;
-   uint32_t base=0x40000;
+   uint32_t base=0x10000;
+   uint32_t len=0x50000;
    for(auto it=tgts.begin(); it!=tgts.end(); it++)
-      if(*it>=base && *it<base+0x10000 && *it != last){
+      if(*it>=base && *it<base+len && *it != last){
          printf("%X %X\n", *it, *it - last);
          last=*it;
       }
    printf("Refs:\n");
    last=0;
    for(auto it=refs.begin(); it!=refs.end(); it++)
-      if(*it>=base && *it<base + 0x10000 && *it != last){
+      if(*it>=base && *it<base + len && *it != last){
          printf("%X %X\n", *it, *it - last);
          last=*it;
       }
 #endif
 
-#if 0
+#if 1
 
    for(auto it=allobjs.begin(); it!=allobjs.end(); it++){
       //if(!(*it)->m_list.size())
