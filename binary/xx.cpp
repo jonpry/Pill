@@ -246,6 +246,8 @@ uint32_t stringidx[] = {1, 1, 2, 2, 3, 3, 4, 4, //0
 
 set<uint32_t> arrayTypes = {1,3,5,7,9,11,13,15,35,37,64};
 
+string prop_types[] = { "uknown", "string", "int", "float", "bool", "time", "file", "expr", "nexpr", "hier", "list", "net"};
+
 #define MIN(a,b) ((a)<(b)?(a):(b))
 
 void printbytes(uint8_t *buf, uint32_t len){
@@ -273,7 +275,7 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
        uint32_t nelem=1; //if !arrayType
 
        uint32_t rel_pos = ((i+1)<<16) + pos-seg_start - 0x40 + 0x4 + 1;
-       printf("El Type: %x %dd,%s, TS: %d@%lx:%lx  %x\n", type, type, types[stringidx[type]], esz, rel_pos,pos, __bswap_32(*(uint32_t*)&buf[pos]));
+       printf("El Type: %x %dd,%s, TS: %d@%lx:%lx  %x\n", type, type, types[stringidx[type]], esz, rel_pos+(type==1?8:0),pos, __bswap_32(*(uint32_t*)&buf[pos]));
        assert(*(uint16_t*)&buf[pos] == 0);
 
        //assert(typeMap.find(type) != typeMap.end());
@@ -403,6 +405,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
        //Some kind of element header
        //if(i==0)
    uint32_t rel_pos = ((i+1)<<16)+1;
+   uint32_t cnt=0;
    while(b>0){
        vector<SList*> args;
        uint32_t opos=pos;
@@ -419,6 +422,8 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
  
        uint32_t nelem=1; //if !arrayType
  
+       if(cnt++ == 2 && i == 0)
+          rel_pos += 0x38;
        rel_pos+=4;
 
        printf("El Type: %x,%s, TS: %d@%lx:%lx  %x in %s\n", type, types[stringidx[type]], esz, (type==0x1?8:0)+rel_pos,pos, __bswap_32(*(uint32_t*)&buf[pos]), fname);
@@ -427,6 +432,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
 
        pos+=0x1;
        b-=0x1;
+       int32_t extra=0;
    
        if(type==37){ //dbbox array
            esz=0;
@@ -489,26 +495,33 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
            esz=4;
        }else if(type==20){ //property
             esz=0;
+            uint32_t orel_pos = rel_pos;
             args.push_back(consume_pointer(&pos,&b,buf,true));
             uint8_t ptype = buf[pos++];
             b-=1;
             args.push_back(consume_byte(&pos,&b,buf));
             if(ptype==0xa){
                args.push_back(consume_pointer(&pos,&b,buf,true));
+               //extra+=3;
             }else{
                args.push_back(consume_u32(&pos,&b,buf));
                args.push_back(consume_pointer(&pos,&b,buf));
+               //extra+=6;
             }
-#if 1
-     //       if(ptype==5)
-     //          rel_pos += 4;
-            rel_pos += 0xC;
-            new SList(rel_pos,"property",&args);
 
-            printbytes(&buf[opos], esz+(pos-opos));
-            continue;
+            printf("Prop type: %x %s\n", ptype, prop_types[ptype].c_str());
+#if 1
+            extra += 6;
+            new SList(orel_pos,"property",&args);
+
+            if(true){
+               rel_pos+=0x14;
+               printbytes(&buf[opos], esz+(pos-opos));
+               continue;
+            }
 #endif
         }else if(type==21){//range
+
             esz=0;
             args.push_back(consume_byte(&pos,&b,buf));
             args.push_back(consume_byte(&pos,&b,buf));
@@ -743,7 +756,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
 
 
         printbytes(&buf[opos], esz+(pos-opos));
-        uint32_t asz=esz+(pos-opos);
+        uint32_t asz=esz+(pos-opos)+extra;
         if(asz%4)
           asz+=4-(asz%4);
          
