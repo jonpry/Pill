@@ -104,7 +104,7 @@ class SList {
       }
    }
 
-   void print(){
+   void print(set<SList*> *stack=0){
      printed.insert(this);
      if(m_atom.size())
         print_token(escape(m_atom),this);
@@ -116,15 +116,22 @@ class SList {
         if(!m_atom.size()){
            print_token("nil",this);
         }
+     if(stack)
+        stack->insert(this);
      for(auto it=m_list.begin(); it!=m_list.end(); it++){
         if(*it){
-           if(printed.find(*it)==printed.end())
-              (*it)->print();
+           if(*it != this)//printed.find(*it)==printed.end())
+              if(stack->find(*it) == stack->end())
+                 (*it)->print(stack);
+              else
+                 print_token("CIRC!!!!",this);
            else
               print_token("SELF!!!!",this);
         }else
            print_token("NULLPTR!!!!",this);
      }
+     if(stack)
+        stack->erase(this);
      if(m_list.size() || m_forceparen)
         print_token(")",this,m_noparen);
    }

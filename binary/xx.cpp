@@ -471,6 +471,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
        }else if(type==10){ //double
             uint64_t aloc = __bswap_64(*(uint64_t*)&buf[pos]);
             double d = *(double*)&aloc;
+            printf("D: %lX\n", aloc);
             new SList(rel_pos,format_double(d));
        }else if(type==12){ //pointer
            esz=0;
@@ -491,8 +492,11 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             new SList(rel_pos,"rcb",&args);
        }else if(type==18){
            esz=0;
-       }else if(type==19){
+       }else if(type==19){ //freeobject
            esz=4;
+           extra=4;
+           uint32_t free = __bswap_32(*(uint32_t*)&buf[pos]);
+           extra += 4 * free;
        }else if(type==20){ //property
             esz=0;
             uint32_t orel_pos = rel_pos;
@@ -511,14 +515,11 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
 
             printf("Prop type: %x %s\n", ptype, prop_types[ptype].c_str());
 #if 1
-            extra += 6;
             new SList(orel_pos,"property",&args);
 
-            if(true){
-               rel_pos+=0x14;
-               printbytes(&buf[opos], esz+(pos-opos));
-               continue;
-            }
+            rel_pos+=0x14;
+            printbytes(&buf[opos], esz+(pos-opos));
+            continue;
 #endif
         }else if(type==21){//range
 
@@ -567,6 +568,9 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             args.push_back(consume_u32(&pos,&b,buf));
             args.push_back(consume_pointer(&pos,&b,buf));
             args.push_back(consume_u32(&pos,&b,buf));
+
+            new SList(rel_pos,"LP",&args);
+            extra=0x10;
         }else if(type==65){ //zeLabel
             esz=0;
             args.push_back(consume_pointer(&pos,&b,buf,true));
@@ -624,16 +628,23 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             args.push_back(consume_pointer(&pos,&b,buf,true));
             args.push_back(consume_pointer(&pos,&b,buf,true));
             args.push_back(consume_pointer(&pos,&b,buf,true));  
+            extra+=0x14;
+            new SList(rel_pos,"net",&args);
+
        }else if(type==81){ //zeSig
             esz=0;
             args.push_back(consume_pointer(&pos,&b,buf,true));
             args.push_back(consume_pointer(&pos,&b,buf,true));             
+            extra += 8;
+            new SList(rel_pos,"sig",&args);
         }else if(type==82){ //zeTerm
             esz=0;
             args.push_back(consume_pointer(&pos,&b,buf,true));
             args.push_back(consume_byte(&pos,&b,buf));
             args.push_back(consume_pointer(&pos,&b,buf));
             args.push_back(consume_pointer(&pos,&b,buf));
+            new SList(rel_pos,"term",&args);
+            extra+=0x8;
         }else if(type==83){ //zePin
             esz=0;
             args.push_back(consume_pointer(&pos,&b,buf,true));
@@ -643,6 +654,8 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             args.push_back(consume_pointer(&pos,&b,buf,true));
             args.push_back(consume_pointer(&pos,&b,buf,true));
             args.push_back(consume_pointer(&pos,&b,buf,true));
+            extra+=4;
+            new SList(rel_pos,"pin",&args);
         }else if(type==84){ //zeInstTerm
             esz=0;
             args.push_back(consume_pointer(&pos,&b,buf,true));
@@ -678,6 +691,12 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
                args.push_back(consume_pointer(&pos,&b,buf,true));
                args.push_back(consume_pointer(&pos,&b,buf,true));
             }
+
+            new SList(rel_pos,"fig",&args);
+
+            rel_pos+=sizes32[type]+0x14;
+            printbytes(&buf[opos], esz+(pos-opos));
+            continue;
         }else if(type==91){ //zeTextDisplay
             esz=0;
 
@@ -895,7 +914,8 @@ if(argc<3 || i==atoi(argv[2])){
       if(consumed.find((*it)->m_ofst) != consumed.end())
          continue;
       print_reset(0);
-      (*it)->print();
+      set<SList*> parents;
+      (*it)->print(&parents);
       printf("\n");
    }
 #endif
