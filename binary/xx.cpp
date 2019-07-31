@@ -503,12 +503,16 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             args.push_back(consume_pointer(&pos,&b,buf,true));
             uint8_t ptype = buf[pos++];
             b-=1;
+            args.push_back(new SList(0,string("type_") + to_hex(ptype)));
             args.push_back(consume_byte(&pos,&b,buf));
             if(ptype==0xa){
                args.push_back(consume_pointer(&pos,&b,buf,true));
                //extra+=3;
             }else{
-               args.push_back(consume_u32(&pos,&b,buf));
+               if(ptype==0)
+                  args.push_back(consume_pointer(&pos,&b,buf,true));
+               else
+                  args.push_back(consume_u32(&pos,&b,buf));
                args.push_back(consume_pointer(&pos,&b,buf));
                //extra+=6;
             }
@@ -573,11 +577,13 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             extra=0x10;
         }else if(type==65){ //zeLabel
             esz=0;
+            args.push_back(consume_u32(&pos,&b,buf));
             args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_u32(&pos,&b,buf));
+            args.push_back(consume_u32(&pos,&b,buf));
+            args.push_back(consume_u32(&pos,&b,buf));
+
+            new SList(rel_pos,"label",&args);
         }else if(type==66){ //zeArc
             esz=0;
             args.push_back(consume_pointer(&pos,&b,buf,true));
@@ -626,7 +632,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
         }else if(type==80){ //zeNet
             esz=0;
             args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_u32(&pos,&b,buf));
             args.push_back(consume_pointer(&pos,&b,buf,true));  
             extra+=0x14;
             new SList(rel_pos,"net",&args);
@@ -634,7 +640,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
        }else if(type==81){ //zeSig
             esz=0;
             args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_pointer(&pos,&b,buf,true));             
+            args.push_back(consume_u32(&pos,&b,buf));             
             extra += 8;
             new SList(rel_pos,"sig",&args);
         }else if(type==82){ //zeTerm

@@ -138,14 +138,6 @@ const char* atoms[]= {"dummy", "dummy" , "dummy" , "call" ,
 
                      "sexists" , "scompile" , "compilein"};
 
-std::string to_hex(uint64_t to_convert){
-    std::string result;
-    std::stringstream ss;
-    ss << std::hex <<to_convert;
-    ss >> result;
-    return result;
-}
-
 SList* print_obj(uint64_t old_adr){
    old_adr &= ~0x7ul;
    //printf("Obj @ 0x%lx %d\n", old_adr, typmap[PAGE(old_adr)]);
