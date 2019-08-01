@@ -492,6 +492,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             new SList(rel_pos,"rcb",&args);
        }else if(type==18){
            esz=0;
+           extra=4;
        }else if(type==19){ //freeobject
            esz=4;
            extra=4;
@@ -534,12 +535,16 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             args.push_back(consume_pointer(&pos,&b,buf,true));
             args.push_back(consume_pointer(&pos,&b,buf,true));
             new SList(rel_pos,"range",&args);
+
+            extra=0x10;
         }else if(type==22){
             esz=0;
             args.push_back(consume_pointer(&pos,&b,buf));
             args.push_back(consume_byte(&pos,&b,buf));
             args.push_back(consume_pointer(&pos,&b,buf));
             new SList(rel_pos,"group",&args);
+
+            extra=8;
         }else if(type==23){
             esz=0;
             args.push_back(consume_pointer(&pos,&b,buf));
@@ -547,6 +552,8 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             args.push_back(consume_pointer(&pos,&b,buf));
             args.push_back(consume_pointer(&pos,&b,buf));
             new SList(rel_pos,"group_member",&args);
+
+            extra=4;
         }else if(type==32){
             esz=0;
             args.push_back(consume_pointer(&pos,&b,buf));
