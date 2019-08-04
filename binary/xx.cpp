@@ -487,7 +487,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
            args.push_back(consume_u32(&pos,&b,buf));
            args.push_back(consume_u32(&pos,&b,buf));
            args.push_back(consume_u32(&pos,&b,buf));
-           args.push_back(consume_u32(&pos,&b,buf)); //This may be a pointer past the end
+           args.push_back(consume_pointer(&pos,&b,buf)); //This may be a pointer past the end
            args.push_back(consume_pointer(&pos,&b,buf));
            args.push_back(consume_pointer(&pos,&b,buf,true));
             new SList(rel_pos,"rcb",&args);
@@ -595,12 +595,15 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             new SList(rel_pos,"label",&args);
         }else if(type==66){ //zeArc
             esz=0;
-            args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_u32(&pos,&b,buf));
+            args.push_back(consume_u32(&pos,&b,buf));
+            args.push_back(consume_u32(&pos,&b,buf));
+            args.push_back(consume_u32(&pos,&b,buf));
+            args.push_back(consume_u32(&pos,&b,buf));
+            args.push_back(consume_u32(&pos,&b,buf));
+ 
+            new SList(rel_pos,"arc",&args);
+            extra=0x10;
         }else if(type==68){
             esz=0;
             uint32_t cnt = __bswap_32(*(uint32_t*)&buf[pos]);            
