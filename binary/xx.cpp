@@ -465,6 +465,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             int8_t aloc = *(int8_t*)&buf[pos];
             esz=1;
             new SList(rel_pos,to_string(aloc));
+            extra=4;
        }else if(type==4){ //int
             int32_t aloc = __bswap_32(*(int32_t*)&buf[pos]);
             new SList(rel_pos,to_string(aloc));
@@ -572,7 +573,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             esz=0;
             args.push_back(consume_pointer(&pos,&b,buf));
             args.push_back(consume_pointer(&pos,&b,buf));
-            new SList(rel_pos,"list",&args);
+            new SList(rel_pos,"parent_child",&args);
         }else if(type==52){ //zeLP
             esz=0;
             args.push_back(consume_byte(&pos,&b,buf));
@@ -623,7 +624,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
 
         }else if(type==74){ //zePath
             args.push_back(consume_byte(&pos,&b,buf));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_u32(&pos,&b,buf));
 
             esz=0;
             uint32_t cnt = __bswap_16(*(uint16_t*)&buf[pos]);            
@@ -631,14 +632,15 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             b-=2;
 
 
-            args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_u32(&pos,&b,buf));
+            args.push_back(consume_u32(&pos,&b,buf));
 
             for(uint32_t j=0; j < cnt; j++){
-               args.push_back(consume_pointer(&pos,&b,buf,true));
-               args.push_back(consume_pointer(&pos,&b,buf,true));
+               args.push_back(consume_u32(&pos,&b,buf));
+               args.push_back(consume_u32(&pos,&b,buf));
             }
-            new SList(rel_pos,"polygon",&args);
+            new SList(rel_pos,"path",&args);
+            extra+=2;
         }else if(type==80){ //zeNet
             esz=0;
             args.push_back(consume_pointer(&pos,&b,buf,true));
@@ -703,14 +705,14 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
                args.push_back(consume_pointer(&pos,&b,buf,true));
             }else if(ftype==9 || ftype==0x21 || ftype==0xd || ftype==0x25){
                for(uint32_t j=0; j < 6; j++){
-                  args.push_back(consume_pointer(&pos,&b,buf,true));
+                  args.push_back(consume_u32(&pos,&b,buf));
                }
             }else{
                args.push_back(consume_pointer(&pos,&b,buf,true));
                args.push_back(consume_pointer(&pos,&b,buf,true));
             }
 
-            new SList(rel_pos,"fig",&args);
+            new SList(rel_pos,"fig_" + to_hex(ftype),&args);
 
             rel_pos+=sizes32[type]+0x14;
             printbytes(&buf[opos], esz+(pos-opos));
@@ -718,7 +720,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
         }else if(type==91){ //zeTextDisplay
             esz=0;
 
-            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_u32(&pos,&b,buf));
             args.push_back(consume_pointer(&pos,&b,buf,true));
             args.push_back(consume_pointer(&pos,&b,buf,true));
 
@@ -729,6 +731,8 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             for(uint32_t i=0; i < MAX(flen,0xF); i++)
                args.push_back(consume_byte(&pos,&b,buf));
 
+            new SList(rel_pos,"text_display",&args);
+            extra=0xC;
         }else if(type == 92){ //zeInstHeader
             esz=0;
             uint32_t opos=pos;
@@ -753,24 +757,25 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             continue;
         }else if(type == 93){ //zeMosaic
             esz=0;
+            args.push_back(consume_u32(&pos,&b,buf));
+            args.push_back(consume_u32(&pos,&b,buf));
             args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_u32(&pos,&b,buf));
+            args.push_back(consume_u32(&pos,&b,buf));
+            args.push_back(consume_u32(&pos,&b,buf));
 
             args.push_back(consume_byte(&pos,&b,buf));
             args.push_back(consume_byte(&pos,&b,buf));
             args.push_back(consume_byte(&pos,&b,buf));
             args.push_back(consume_byte(&pos,&b,buf));
 
-            args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
+            args.push_back(consume_u32(&pos,&b,buf));
+            args.push_back(consume_u32(&pos,&b,buf));
 
-            args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_pointer(&pos,&b,buf,true));
-
+            args.push_back(consume_u32(&pos,&b,buf));
+            args.push_back(consume_u32(&pos,&b,buf));
+            extra=4;
+            new SList(rel_pos,"mosaic",&args);
         }else if(type == 94){ //zeAnyInst
             esz=0;
             args.push_back(consume_u32(&pos,&b,buf));

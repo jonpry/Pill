@@ -36,6 +36,12 @@ void print_token(string s, SList *t, bool dont_print){
    bool rpar = s == ")";
 
    bool newline=false;
+
+   if(s.rfind("dangling",0)==0 && s.rfind("dangling_10065",0) && s.rfind("dangling_1002d",0) && s.rfind("dangling_1006d",0)){
+      //printf("%s\n", s.c_str());
+      //assert(false);
+   }
+
    if(pos > 80 || s == "setq" || s == "foreach" || s == "let" || s == "putpropq" 
           || s == "for" || s == "compile" || s == "dbCloseBag" || s == "if" || s == "else" 
           || s == "return" || s == "case" || s == "nil" || s == "prog" || s == "unless"
