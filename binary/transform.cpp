@@ -59,7 +59,7 @@ void rename(string a, string b, SList *l, void(*lambda)(SList*)){
     }
     for(auto it=l->m_list.begin(); it!=l->m_list.end(); it++)
        if(*it)
-          rename(a,b,*it);
+          rename(a,b,*it,lambda);
 }
 
 void popback(string a, SList *l){
@@ -160,7 +160,7 @@ void mov_inside_front(string a, SList *l){
 }
 
 
-void rot_back(string a, SList **pl){
+void rot_back(string a, SList **pl, set<SList*> *parents){
     SList *l = *pl;
     if(l->m_atom == a){
        SList *nl = l->m_list[0];
@@ -171,13 +171,14 @@ void rot_back(string a, SList **pl){
        *pl = nl;
        l=nl;
     }
+    if(parents)
+       parents->insert(l);
     for(auto it=l->m_list.begin(); it!=l->m_list.end(); it++)
-       if(*it)
-          rot_back(a,&(*it));
-void getsgq(SList *l);
-
-}void getsgq(SList *l);
-
+       if(*it && parents->find(*it) == parents->end())
+          rot_back(a,&(*it),parents);
+    if(parents)
+       parents->erase(l);
+}
 
 void insert_nil(string a, SList *l, void(*lambda)(SList*)){
     if(l->m_atom == a){

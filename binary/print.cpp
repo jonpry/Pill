@@ -38,8 +38,10 @@ void print_token(string s, SList *t, bool dont_print){
    bool newline=false;
 
    if(s.rfind("dangling",0)==0 && s.rfind("dangling_10065",0) && s.rfind("dangling_1002d",0) && s.rfind("dangling_1006d",0)){
-      //printf("%s\n", s.c_str());
-      //assert(false);
+#if 0
+      printf("%s\n", s.c_str());
+      assert(false);
+#endif
    }
 
    if(pos > 80 || s == "setq" || s == "foreach" || s == "let" || s == "putpropq" 

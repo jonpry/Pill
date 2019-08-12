@@ -140,6 +140,7 @@ class SList {
    string m_atom;
    bool m_forcebreak, m_noparen, m_funccall, m_forceparen;
    vector<SList*> m_list;
+   map<string,SList*> m_map;
 };
 
 class Func {
@@ -158,7 +159,7 @@ void rpn(string a, SList *l,bool reverse=false);
 void mov_inside(string a, SList *l);
 void mov_inside_front(string a, SList *l);
 void del_to_parent(string a, SList *l);
-void rot_back(string a, SList **l);
+void rot_back(string a, SList **pl, set<SList*> *parents =0);
 void insert_nil(string a, SList *l, void(*lambda)(SList*) =0);
 void setsgq(SList *l);
 void putpropq(SList *l);

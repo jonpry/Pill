@@ -517,7 +517,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
                //extra+=3;
                //rel_pos+=4;
             }else{
-               if(ptype==0 || ptype == 0xd)
+               if(ptype==0 || ptype == 0xd || ptype == 4 || ptype == 7)
                   args.push_back(consume_pointer(&pos,&b,buf,true));
                else
                   args.push_back(consume_u32(&pos,&b,buf));
@@ -847,6 +847,75 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
    }
 }
 
+
+SList* consume_list(SList *l){
+   vector<SList*> ret;
+   while(l && l->m_atom == "list"){
+      ret.push_back(consume_list(l->m_list[0]));
+      l = l->m_list[1];
+   }
+   if(!ret.size())
+      return l;
+   return new SList(0,"",&ret);   
+}
+
+
+void find_node(string a, SList *l, void(*lambda)(SList*) =0){
+   if(l->m_list.size() && l->m_list[0]->m_atom == a && lambda)
+       lambda(l);
+   for(auto it=l->m_list.begin(); it!=l->m_list.end(); it++)
+       if(*it)
+          find_node(a,*it,lambda);
+}
+
+void find_nodep(string a, SList *l, void(*lambda)(SList*) =0){
+   if(l->m_atom == a && lambda)
+       lambda(l);
+   for(auto it=l->m_list.begin(); it!=l->m_list.end(); it++)
+       if(*it)
+          find_nodep(a,*it,lambda);
+}
+
+void proc_skill(SList *root){
+
+   rename("symbol","foo",root,[](SList *t) {
+       string s = t->m_list[0]->m_atom;
+       s = s.substr(1,s.length()-2);
+       t->m_atom = s;
+       t->m_list.clear();
+   });
+
+#if 0
+   find_node("let", root, [](SList *t) {
+       t->m_list[1]->m_list[0]->m_list = consume_list(t->m_list[1]->m_list[0]); 
+   });
+
+   find_node("procedure", root, [](SList *t) {
+       t->m_list[1]->m_list[0]->m_list = consume_list(t->m_list[1]->m_list[0]); 
+   });
+
+   find_node("dbReplaceProp", root, [](SList *t) {
+       t->m_list[1]->m_list = consume_list(t->m_list[1]); 
+   });
+
+   find_node("dbCreateRect", root, [](SList *t) {
+       t->m_list[1]->m_list = consume_list(t->m_list[1]); 
+   });
+#endif
+   find_nodep("list", root, [](SList *t) {
+       t->m_list = consume_list(t)->m_list;
+       t->m_atom = ""; 
+   });
+
+   //rename("list","",root);
+
+   set<SList*> parents;
+   print_reset(0);
+   parents.clear();
+   root->print(&parents);
+   printf("\n");
+}
+
 int main(int argc, char** argv){
    //Load entire file into memory
    //FILE* f = fopen("LAYOUT.CDB","r");
@@ -965,16 +1034,31 @@ if(argc<3 || i==atoi(argv[2])){
 #endif
 
 #if 1
-
+   vector<SList *> properties;
    for(auto it=allobjs.begin(); it!=allobjs.end(); it++){
       //if(!(*it)->m_list.size())
       //   continue;
       if(consumed.find((*it)->m_ofst) != consumed.end())
          continue;
-      print_reset(0);
+      if((*it)->m_atom == "property"){
+         properties.push_back(*it);
+         consumed.insert((*it)->m_ofst);
+      }
+   }
+
+   for(auto it=properties.begin(); it!=properties.end(); it++){
+      
+      printf("property %s\n", (*it)->m_list[0]->m_atom.c_str());
+      if((*it)->m_list[1]->m_atom == "type_4"){
+          proc_skill((*it)->m_list[3]);
+      }
+#if 0
       set<SList*> parents;
+      print_reset(0);
+      parents.clear();
       (*it)->print(&parents);
       printf("\n");
+#endif
    }
 #endif
 
