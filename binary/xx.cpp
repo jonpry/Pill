@@ -876,6 +876,35 @@ void find_nodep(string a, SList *l, void(*lambda)(SList*) =0){
           find_nodep(a,*it,lambda);
 }
 
+void swap_back(string a, SList *l){
+#if 1
+   if(l && l->m_list.size() > 1 && l->m_list[0] && l->m_list[0]->m_atom == a){
+      vector<SList*> nl;
+      nl.push_back(l->m_list[1]);
+      SList* t = l->m_list[0];
+      for(auto it=next(l->m_list.begin(),1); it!=l->m_list.end(); it++){
+         nl.push_back(t);
+         nl.push_back(*it);
+      }
+      l->m_list = nl;
+   }
+#endif
+   for(auto it=l->m_list.begin(); it!=l->m_list.end(); it++)
+      if(*it)
+         swap_back(a,*it);
+}
+
+void to_parent(string a, SList *l){
+   if(l && l->m_list.size() && l->m_list[0]->m_atom == a){
+      l->m_atom = l->m_list[0]->m_atom;
+      l->m_list.erase(l->m_list.begin());
+   }
+   for(auto it=l->m_list.begin(); it!=l->m_list.end(); it++){
+      if(*it)
+        to_parent(a,*it);
+   }
+}
+
 void proc_skill(SList *root){
 
    rename("symbol","foo",root,[](SList *t) {
@@ -906,6 +935,35 @@ void proc_skill(SList *root){
        t->m_list = consume_list(t)->m_list;
        t->m_atom = ""; 
    });
+
+   rename("setq","=",root);
+   rename("getSGq","~>",root);
+   rename("plus","+",root);
+   rename("equal","==",root);
+   rename("nequal","!=",root);
+   rename("difference","-",root);
+   rename("quotient","/",root);
+   rename("times","*",root);
+   rename("lessp","<", root);
+   rename("and","&&", root);
+   rename("or","||", root);
+   rename("range",":", root);
+
+
+   swap_back("=",root);
+   swap_back("~>",root);
+   swap_back("+",root);
+   swap_back("==",root);
+   swap_back("!=",root);
+   swap_back("-",root);
+   swap_back("/",root);
+   swap_back("*",root);
+   swap_back("<",root);
+   swap_back("&&",root);
+   swap_back("||",root);
+   swap_back(":",root);
+
+   to_parent("if",root);
 
    //rename("list","",root);
 

@@ -47,7 +47,7 @@ void print_token(string s, SList *t, bool dont_print){
    if(pos > 80 || s == "setq" || s == "foreach" || s == "let" || s == "putpropq" 
           || s == "for" || s == "compile" || s == "dbCloseBag" || s == "if" || s == "else" 
           || s == "return" || s == "case" || s == "nil" || s == "prog" || s == "unless"
-          || s == "list" || s == "cond" || s == "property"
+          || s == "list" || s == "cond" || s == "property" || s == "dbReplaceProp"
           || s.rfind("setvar",0)==0 || s.rfind("if",0)==0 || s.rfind("when",0)==0 
           || s.rfind("then",0)==0 || s.rfind("loadfunc",0)==0
           || s.rfind("compile",0)==0
