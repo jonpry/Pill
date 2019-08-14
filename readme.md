@@ -49,3 +49,9 @@ Skill calls python code through the interp.skill.procedures dictionary, which is
 
 ## Binary contexts
 Many people do not have the SkillDev license required to pretty-print skill code from within Virtuoso. If your PDK is distributed in binary form, the binary subdirectory contains a program that can dump 64bit context files. This is a work in progress, but generates 99% working code. 
+
+## Encrypted Skill
+The decrypt tool in the binary directory is able to extract usable skill code from .ile files
+
+## CDB File format
+An alpha tool is available for extracting the contents of CDB format files. Currently it seems to extract usable Skill, but some work needs to be done to package the code, props, and geometry into something readily loadable by Pill.

@@ -861,11 +861,19 @@ SList* consume_list(SList *l){
 
 
 void find_node(string a, SList *l, void(*lambda)(SList*) =0){
-   if(l->m_list.size() && l->m_list[0]->m_atom == a && lambda)
+   if(l && l->m_list.size() && l->m_list[0]->m_atom == a && lambda)
        lambda(l);
    for(auto it=l->m_list.begin(); it!=l->m_list.end(); it++)
        if(*it)
           find_node(a,*it,lambda);
+}
+
+void find_nodepp(string a, SList *l, void(*lambda)(SList*) =0){
+   if(l && l->m_list.size() && l->m_list[0]->m_list.size() && l->m_list[0]->m_list[0]->m_atom == a && lambda)
+       lambda(l);
+   for(auto it=l->m_list.begin(); it!=l->m_list.end(); it++)
+       if(*it)
+          find_nodepp(a,*it,lambda);
 }
 
 void find_nodep(string a, SList *l, void(*lambda)(SList*) =0){
@@ -882,7 +890,7 @@ void swap_back(string a, SList *l){
       vector<SList*> nl;
       nl.push_back(l->m_list[1]);
       SList* t = l->m_list[0];
-      for(auto it=next(l->m_list.begin(),1); it!=l->m_list.end(); it++){
+      for(auto it=next(l->m_list.begin(),2); it!=l->m_list.end(); it++){
          nl.push_back(t);
          nl.push_back(*it);
       }
@@ -964,8 +972,53 @@ void proc_skill(SList *root){
    swap_back(":",root);
 
    to_parent("if",root);
+#if 1
+   find_node("procedure", root, [](SList *t) {
+       SList* name = t->m_list[1]->m_list[0];
+       SList* args = new SList(0,"",&t->m_list[1]->m_list);
+       args->m_list.erase(args->m_list.begin());
+       t->m_list[1]->m_list.resize(1);
+       t->m_list[1]->m_list.push_back(args);
+       t->m_list[1]->m_list.push_back(t->m_list[2]);
+       t->m_list.resize(2);
+   });
+#endif
 
-   //rename("list","",root);
+   find_node("let", root, [](SList *t) {
+       t->m_list[0]->m_list.push_back(t->m_list[1]);
+       for(auto it=next(t->m_list.begin(),2); it!=t->m_list.end(); it++){
+          t->m_list[0]->m_list.push_back(*it);
+       }
+       t->m_list.resize(1);
+   });
+
+   find_node("prog", root, [](SList *t) {
+       t->m_list[0]->m_list.push_back(t->m_list[1]);
+       for(auto it=next(t->m_list.begin(),2); it!=t->m_list.end(); it++){
+          t->m_list[0]->m_list.push_back(*it);
+       }
+       t->m_list.resize(1);
+   });
+
+   find_node("setSGq", root, [](SList *t) {
+       t->m_list.resize(5);
+       t->m_list[0] = t->m_list[1];
+       t->m_list[1] = new SList(0,"~>");
+
+       t->m_list[4] = t->m_list[2];
+       t->m_list[2] = t->m_list[3];
+       t->m_list[3] = new SList(0,"=");
+       
+   });
+
+
+   find_nodepp("\"list\"", root, [](SList *t) {
+       t->m_atom = "list";
+       t->m_list.erase(t->m_list.begin());
+   });
+
+//   root->m_noparen=true;
+//   root->m_list[0]->m_noparen=true;
 
    set<SList*> parents;
    print_reset(0);
