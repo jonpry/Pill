@@ -201,13 +201,13 @@ zeMagInst       	    95			16
 zeLrgSigAryInfo 	    96			 8
 */
 
-uint32_t sizes32[] = { 1, 1, 2, 2, 4, 4, 4, 4, 
-                     4, 4, 8, 8, 4, 4, 1, 1, 
-                     0x24, 0, 4, 0xc, 0x14, 0x10, 0x10, 0x14, 
-                     0, 0, 0, 0, 0, 0, 0, 0,
-                     4, 8, 8, 8, 0x10, 0x10, 8, 0,
-                     4, 0, 0, 0, 0, 0, 0, 0,
-                     0, 0, 0x24, 0x44, 0x1c, 0, 0, 0,
+uint32_t sizes32[] = { 4, 1, 2, 2, 4, 4, 4, 4,  //0
+                     4, 4, 8, 8, 4, 4, 1, 1,  //8
+                     0x24, 0, 4, 0x8, 0x14, 0x10, 0x10, 0x14, //0x10 
+                     0, 0, 0, 0, 0, 0, 0, 0, //0x18
+                     4, 8, 8, 8, 0x10, 0x10, 8, 0, //0x20
+                     4, 0, 0, 0, 0, 0, 0, 0, //0x28
+                     0, 0, 0xc, 0x44, 0x1c, 0, 0, 0, //0x30
                      0, 0, 0, 0, 0x20, 0x1c, 0x30, 2,
                      2, 0x14, 0x28, 0x10, 0xc, 0x10, 0, 0xc,
                      0, 0, 0x18, 0, 0, 0, 0, 0,
@@ -343,6 +343,19 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
             new SList(rel_pos,"property",&args);
         }
 
+       if(type==21){ //range
+            uint32_t aloc = __bswap_32(*(uint32_t*)&buf[pos+4]);
+            uint32_t bloc = __bswap_32(*(uint32_t*)&buf[pos+8]);
+            vector<SList*> args;
+
+            if(aloc)
+               args.push_back(new SList(true,aloc));
+            if(bloc)
+               args.push_back(new SList(true, bloc));
+            new SList(rel_pos,"range",&args);
+            esz += 4;
+        }
+
         if(type==33){
             uint32_t aloc = __bswap_32(*(uint32_t*)&buf[pos]);
             uint32_t bloc = __bswap_32(*(uint32_t*)&buf[pos+4]);
@@ -353,6 +366,10 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
             if(bloc)
                args.push_back(new SList(true, bloc));
             new SList(rel_pos,"list",&args);
+        }
+
+        if(type==50){
+            new SList(rel_pos,"zeCellView@" + to_hex(rel_pos),0);          
         }
  
         if(frompos.find(rel_pos) == frompos.end()){
@@ -472,8 +489,9 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             new SList(rel_pos,to_string(aloc));
        }else if(type==10){ //double
             uint64_t aloc = __bswap_64(*(uint64_t*)&buf[pos]);
+            uint32_t bloc = __bswap_32(*(uint32_t*)&buf[pos]);
             double d = *(double*)&aloc;
-            printf("D: %lX\n", aloc);
+            printf("D: %lX S: %X %.14g %f\n", aloc, bloc, d, *(float*)&bloc);
             new SList(rel_pos,format_double(d));
        }else if(type==12){ //pointer
            esz=0;
@@ -850,13 +868,42 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
 
 SList* consume_list(SList *l){
    vector<SList*> ret;
-   while(l && l->m_atom == "list"){
+   while(l && l->m_atom == "list" && l->m_list.size()){
       ret.push_back(consume_list(l->m_list[0]));
       l = l->m_list[1];
    }
    if(!ret.size())
       return l;
    return new SList(0,"",&ret);   
+}
+
+
+void consume_props(SList *l, bool root=true){
+   if(l && l->m_atom == "property") {
+      if(l->m_list.size()==2){
+          SList *t = l->m_list[0];
+          l->m_list[0] = l->m_list[1];
+          l->m_list[1] = new SList(0,"->");
+          l->m_list.push_back(t);
+          l->m_atom = "";
+      }else if(l->m_list.size()==3){
+#if 1
+          SList *t = l->m_list[0];
+          SList *t2 = l->m_list[1];
+          l->m_list[0] = l->m_list[2];
+          l->m_list[1] = new SList(0,"->");
+          l->m_list[2] = t;
+          l->m_list.push_back(new SList(0,"="));
+          l->m_list.push_back(t2);
+          l->m_atom = "";
+#endif
+      }
+      l->m_noparen = !root;
+   }
+   for(auto it=l->m_list.begin(); it != l->m_list.end(); it++){
+      if(*it)
+         consume_props(*it,false);
+   }
 }
 
 
@@ -1158,18 +1205,28 @@ if(argc<3 || i==atoi(argv[2])){
    }
 
    for(auto it=properties.begin(); it!=properties.end(); it++){
-      
-      printf("property %s\n", (*it)->m_list[0]->m_atom.c_str());
-      if((*it)->m_list[1]->m_atom == "type_4"){
+      //Property type only yields result type. Could be function/constant/ptr
+      if((*it)->m_list.size() < 4){ //Came from PROP.XX
+          consume_props(*it);
+          proc_skill(*it);
+          continue;
+      }
+      int type = atoi((*it)->m_list[1]->m_atom.substr(5,1).c_str());
+      string rtype = prop_types[type];
+      printf("property %s %s %d\n", (*it)->m_list[0]->m_atom.c_str(), rtype.c_str(), type);
+      if(type == 4){
           proc_skill((*it)->m_list[3]);
       }
-#if 0
+
+      if(type == 0 || type == 1){
+#if 1
       set<SList*> parents;
       print_reset(0);
       parents.clear();
-      (*it)->print(&parents);
+      (*it)->m_list[3]-> print(&parents);
       printf("\n");
 #endif
+      }
    }
 #endif
 

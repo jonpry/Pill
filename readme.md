@@ -54,4 +54,4 @@ Many people do not have the SkillDev license required to pretty-print skill code
 The decrypt tool in the binary directory is able to extract usable skill code from .ile files
 
 ## CDB File format
-An alpha tool is available for extracting the contents of CDB format files. Currently it seems to extract usable Skill, but some work needs to be done to package the code, props, and geometry into something readily loadable by Pill.
+An alpha tool is available for extracting the contents of CDB format files. Currently it seems to extract usable Skill, but some work needs to be done to package the code, props, and geometry into something readily loadable by Pill. Currently only loads files written from big-endian 32-bit machines because I don't have any other CDB's to test on.
