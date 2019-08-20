@@ -332,15 +332,33 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
             uint32_t aloc = __bswap_32(*(uint32_t*)&buf[pos]);
             uint32_t bloc = __bswap_32(*(uint32_t*)&buf[pos+0xc]);
             uint32_t cloc = __bswap_32(*(uint32_t*)&buf[pos+0x10]);
-            printf("Aloc: %X %X %X\n", aloc, bloc, cloc);
+            uint32_t dloc = __bswap_32(*(uint32_t*)&buf[pos+4]);
+            uint8_t ptype = buf[pos+8];
+
+            printf("Aloc: %X %X %X %X %X\n", aloc, bloc, cloc, dloc, ptype);
             vector<SList*> args;
-            if(aloc)
-               args.push_back(new SList(true,aloc));
-            if(bloc && !(bloc>>24))
-               args.push_back(new SList(true, bloc));
-            if(cloc)
-               args.push_back(new SList(true, cloc));
-            new SList(rel_pos,"property",&args);
+            if(aloc < 0x10000){
+                esz-=8;
+                args.push_back(new SList(true,dloc));
+                new SList(rel_pos+4,"property",&args);
+            }else{
+               if(aloc)
+                  args.push_back(new SList(true,aloc));
+               if(ptype == 3){
+                  if(bloc)
+                    args.push_back(new SList(0,"t"));
+                  else
+                    args.push_back(new SList(0,"nil"));
+               }else if(ptype == 1){
+                  args.push_back(new SList(0,to_string(bloc)));
+               }else{
+                  if(bloc && !(bloc>>24))
+                     args.push_back(new SList(true, bloc));
+               }
+               if(cloc)
+                  args.push_back(new SList(true, cloc));
+               new SList(rel_pos,"property",&args);
+            }
         }
 
        if(type==21){ //range
@@ -353,7 +371,7 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
             if(bloc)
                args.push_back(new SList(true, bloc));
             new SList(rel_pos,"range",&args);
-            esz += 4;
+   
         }
 
         if(type==33){
@@ -363,13 +381,17 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
             vector<SList*> args;
             if(aloc)
                args.push_back(new SList(true,aloc));
+            else
+               args.push_back(new SList(0,"nil"));
             if(bloc)
                args.push_back(new SList(true, bloc));
-            new SList(rel_pos,"list",&args);
+            else
+               args.push_back(new SList(0,"nil"));
+            new SList(rel_pos,"list_node",&args);
         }
 
         if(type==50){
-            new SList(rel_pos,"zeCellView@" + to_hex(rel_pos),0);          
+            new SList(rel_pos,"zeCellView");//TODO: don't know if multiple can exist in single file          
         }
  
         if(frompos.find(rel_pos) == frompos.end()){
@@ -416,6 +438,20 @@ SList* consume_byte(uint32_t *pos, int32_t *b, uint8_t *buf){
    *b-=1;
    return new SList(0,string("byte_") + to_string(buf[*pos-1]));
 }
+
+map<int,string> fig_type_map = {
+                      {0, "label"},
+                      {5, "rect"},
+                      {6, "polygon"}, 
+                      {7, "line"}, 
+                      {8, "path"}, 
+                      {0xb, "ellipse"}, 
+                      {0xc, "donut"}, 
+                      {0xd, "mosaic"}, 
+                      {0xf, "maginst"}, 
+                      {0x1a, "dot"},
+                      {0x21, "textdisplay"}};
+                     //TODO: 0x22-0x25 are some kind of manhattan distance thing 
 
 
 void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32_t b, const char* fname){
@@ -588,7 +624,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             uint32_t orel_pos = rel_pos;
             args.push_back(consume_pointer(&pos,&b,buf,false,&rel_pos));
             args.push_back(consume_pointer(&pos,&b,buf,false,&rel_pos));
-            new SList(orel_pos,"list",&args);
+            new SList(orel_pos,"list_node",&args);
 
             printbytes(&buf[opos], esz+(pos-opos));
             continue;
@@ -738,7 +774,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
                args.push_back(consume_pointer(&pos,&b,buf,true));
             }
 
-            new SList(rel_pos,"fig_" + to_hex(ftype),&args);
+            new SList(rel_pos,"fig_" + fig_type_map[ftype],&args);
 
             rel_pos+=sizes32[type]+0x14;
             printbytes(&buf[opos], esz+(pos-opos));
@@ -868,7 +904,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
 
 SList* consume_list(SList *l){
    vector<SList*> ret;
-   while(l && l->m_atom == "list" && l->m_list.size()){
+   while(l && l->m_atom == "list_node" && l->m_list.size() > 1){
       ret.push_back(consume_list(l->m_list[0]));
       l = l->m_list[1];
    }
@@ -877,22 +913,28 @@ SList* consume_list(SList *l){
    return new SList(0,"",&ret);   
 }
 
+SList* symbolify(SList* l){
+   if(l && l->m_atom.length() && l->m_atom[0] == '\"'){
+       return new SList(0,l->m_atom.substr(1,l->m_atom.length()-2),&l->m_list);
+   }
+   return l;
+}
 
 void consume_props(SList *l, bool root=true){
    if(l && l->m_atom == "property") {
       if(l->m_list.size()==2){
           SList *t = l->m_list[0];
-          l->m_list[0] = l->m_list[1];
+          l->m_list[0] = symbolify(l->m_list[1]);
           l->m_list[1] = new SList(0,"->");
-          l->m_list.push_back(t);
+          l->m_list.push_back(symbolify(t));
           l->m_atom = "";
       }else if(l->m_list.size()==3){
 #if 1
           SList *t = l->m_list[0];
           SList *t2 = l->m_list[1];
-          l->m_list[0] = l->m_list[2];
+          l->m_list[0] = symbolify(l->m_list[2]);
           l->m_list[1] = new SList(0,"->");
-          l->m_list[2] = t;
+          l->m_list[2] = symbolify(t);
           l->m_list.push_back(new SList(0,"="));
           l->m_list.push_back(t2);
           l->m_atom = "";
@@ -960,9 +1002,11 @@ void to_parent(string a, SList *l){
    }
 }
 
-void proc_skill(SList *root){
+void proc_skill(SList *root, string prop_name=""){
 
    rename("symbol","foo",root,[](SList *t) {
+       if(!t->m_list.size())
+          return;
        string s = t->m_list[0]->m_atom;
        s = s.substr(1,s.length()-2);
        t->m_atom = s;
@@ -986,7 +1030,7 @@ void proc_skill(SList *root){
        t->m_list[1]->m_list = consume_list(t->m_list[1]); 
    });
 #endif
-   find_nodep("list", root, [](SList *t) {
+   find_nodep("list_node", root, [](SList *t) {
        t->m_list = consume_list(t)->m_list;
        t->m_atom = ""; 
    });
@@ -1003,6 +1047,7 @@ void proc_skill(SList *root){
    rename("and","&&", root);
    rename("or","||", root);
    rename("range",":", root);
+   rename("quote","'", root);
 
 
    swap_back("=",root);
@@ -1037,6 +1082,18 @@ void proc_skill(SList *root){
           t->m_list[0]->m_list.push_back(*it);
        }
        t->m_list.resize(1);
+       t->m_atom = t->m_list[0]->m_atom;
+       t->m_list = t->m_list[0]->m_list;
+   });
+
+  find_node("exists", root, [](SList *t) {
+       t->m_atom = t->m_list[0]->m_atom;
+       t->m_list.erase(t->m_list.begin());
+   });
+
+  find_node("for", root, [](SList *t) {
+       t->m_atom = t->m_list[0]->m_atom;
+       t->m_list.erase(t->m_list.begin());
    });
 
    find_node("prog", root, [](SList *t) {
@@ -1058,20 +1115,29 @@ void proc_skill(SList *root){
        
    });
 
-
-   find_nodepp("\"list\"", root, [](SList *t) {
+#if 1
+   find_node("list", root, [](SList *t) {
        t->m_atom = "list";
        t->m_list.erase(t->m_list.begin());
    });
+#endif
 
 //   root->m_noparen=true;
 //   root->m_list[0]->m_noparen=true;
 
    set<SList*> parents;
-   print_reset(0);
+   FILE *f=0;
+   if(prop_name == "\"procedure\""){
+      f = fopen("out.il","w");
+      root = root->m_list[0]; //TODO: not sure if this will always work
+      root->m_noparen=true;
+   }
+   print_reset(f);
    parents.clear();
    root->print(&parents);
    printf("\n");
+   if(f)
+      fclose(f);
 }
 
 int main(int argc, char** argv){
@@ -1192,42 +1258,80 @@ if(argc<3 || i==atoi(argv[2])){
 #endif
 
 #if 1
-   vector<SList *> properties;
+   vector<SList *> properties,groups;
    for(auto it=allobjs.begin(); it!=allobjs.end(); it++){
       //if(!(*it)->m_list.size())
       //   continue;
-      if(consumed.find((*it)->m_ofst) != consumed.end())
-         continue;
+      //if(consumed.find((*it)->m_ofst) != consumed.end())
+      //   continue;
       if((*it)->m_atom == "property"){
          properties.push_back(*it);
          consumed.insert((*it)->m_ofst);
       }
+      if((*it)->m_atom == "group"){
+         groups.push_back(*it);
+         consumed.insert((*it)->m_ofst);
+      }
    }
 
+#if 1
    for(auto it=properties.begin(); it!=properties.end(); it++){
       //Property type only yields result type. Could be function/constant/ptr
       if((*it)->m_list.size() < 4){ //Came from PROP.XX
           consume_props(*it);
           proc_skill(*it);
+          //set<SList*> parents;
+          //(*it)->print(&parents);
+          //printf("\n");
           continue;
       }
       int type = atoi((*it)->m_list[1]->m_atom.substr(5,1).c_str());
       string rtype = prop_types[type];
-      printf("property %s %s %d\n", (*it)->m_list[0]->m_atom.c_str(), rtype.c_str(), type);
-      if(type == 4){
-          proc_skill((*it)->m_list[3]);
+      printf("property %s %s %s %d\n", (*it)->m_list[0]->m_atom.c_str(), (*it)->m_list[2]->m_atom.c_str(), rtype.c_str(), type );
+      if(type == 4 || type == 0xd){
+          proc_skill((*it)->m_list[3],(*it)->m_list[0]->m_atom);
       }
 
-      if(type == 0 || type == 1){
-#if 1
-      set<SList*> parents;
-      print_reset(0);
-      parents.clear();
-      (*it)->m_list[3]-> print(&parents);
-      printf("\n");
-#endif
+      if(type == 0 || type == 1 || type == 2 || type == 3){
+         set<SList*> parents;
+         print_reset(0);
+         parents.clear();
+         (*it)->m_list[3]-> print(&parents);
+         printf("\n");
+      }
+      if((*it)->m_list.size() > 4){
+         set<SList*> parents;
+         print_reset(0);
+         parents.clear();
+         (*it)->m_list[4]-> print(&parents);
+         printf("\n");
       }
    }
+#endif
+   for(auto it=groups.begin(); it!=groups.end(); it++){
+//       proc_skill(*it);
+         set<SList*> parents;
+         print_reset(0);
+         parents.clear();
+         (*it)->print(&parents);
+         printf("\n");
+   }
+
+   printf("\ndang done %s\n", argv[1]);
+
+   for(auto it=allobjs.begin(); it!=allobjs.end(); it++){
+      if(!(*it)->m_list.size())
+         continue;
+      if(consumed.find((*it)->m_ofst) != consumed.end())
+         continue;
+
+         set<SList*> parents;
+         print_reset(0);
+         parents.clear();
+         (*it)->print(&parents);
+         printf("\n");
+   }
+
 #endif
 
 #if 0

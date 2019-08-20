@@ -60,8 +60,8 @@ def flatten(items):
 
 grammar = r"""
      block       = ws? stmts
-     procedure   = PROCEDURE LPAR ws? identifier LPAR ws? (identifier ws?)* string? ws? (OPTIONAL ws? LPAR ((identifier/NIL) ws? RPAR)*)? RPAR ws? stmts RPAR
-     identifier  = !((reserved ) (ws/RPAR/EQU/PLUS/MINUS/RBR/BANG/TILDA/LT/GT/DOT/LPAR)) ~"[a-zA-Z_][a-zA-Z_0-9]*"
+     procedure   = PROCEDURE ws? LPAR ws? identifier ws? LPAR ws? (identifier ws?)* string? ws? (OPTIONAL ws? LPAR ((identifier/NIL) ws? RPAR)*)? RPAR ws? stmts RPAR
+     identifier  = !((reserved ) (ws/RPAR/EQU/PLUS/MINUS/RBR/BANG/TILDA/LT/GT/DOT/LPAR)) ~r"[a-zA-Z_][a-zA-Z_0-9\?]*"
      reserved    = IF / ELSE / THEN / FOR / PROCEDURE / WHEN / LET / UNLESS / CASE / NIL / FOREACH / SETOF / EXISTS / TAU / RETURN / COND / WHILE / OPTIONAL
      list        = LPAR (listelem ws?)* RPAR
      keyword_func= LPAR func_name ws? ((Q identifier ws?)? ororexpr ws?)+ RPAR
@@ -1065,6 +1065,8 @@ class Visitor(NodeVisitor):
     def visit_procedure(self,node,children): 
         # PROCEDURE LPAR ws? identifier LPAR ws? (identifier ws?)* RPAR ws? stmts RPAR
         # PROCEDURE LPAR ws? identifier LPAR ws? (identifier ws?)* string? ws? (OPTIONAL ws? (identifier ws?)*)? RPAR ws? stmts RPAR
+        # PROCEDURE ws? LPAR ws? identifier ws? LPAR ws? (identifier ws?)* string? ws? (OPTIONAL ws? LPAR ((identifier/NIL) ws? RPAR)*)? RPAR ws? stmts RPAR
+
         def gen():
            self.c = Code()
            self.code_stack.append(self.c)
@@ -1073,13 +1075,13 @@ class Visitor(NodeVisitor):
            self.c.co_varnames = []
            self.c.co_firstlineno = 1
 
-           proc = children[3]()[1]
+           proc = children[4]()[1]
            #print proc
            self.c.co_name = proc
 
            self.locals.append([])
 
-           for e in children[6]:
+           for e in children[8]:
               self.locals[-1].append(e[0]()[1])
               self.c.co_argcount += 1
               self.c.co_varnames.append(e[0]()[1])
@@ -1103,7 +1105,7 @@ class Visitor(NodeVisitor):
 
 
            self.c.LOAD_CONST(None) #Nil is default return value
-           children[12]()
+           children[14]()
  
            #self.pprint("prepop: ")
 

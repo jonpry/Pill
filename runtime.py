@@ -62,6 +62,9 @@ def floatp(s):
 def fixp(s):
    return isinstance(s,int)
 
+def numberp(s):
+   return isinstance(s,int) or isinstance(s,float)
+
 def boundp(e):
    return e.expr in skill.variables
 
@@ -589,6 +592,9 @@ def typep(v):
    print type(v)
    assert(False) #TODO:
 
+def null(v):
+   return not v
+
 def eval(v):
    if isinstance(v,Lazy):
       return interp(v.expr)
@@ -649,9 +655,12 @@ def run(layermap_file,s,r,l):
 
    skill.procedures['stringp'] = stringp
    skill.procedures['floatp'] = floatp
+   skill.procedures['numberp'] = numberp
    skill.procedures['fixp'] = fixp
    skill.procedures['listp'] = listp
    skill.procedures['boundp'] = boundp
+   skill.procedures['null'] = null
+   skill.procedures['errset'] = nullfunc
    skill.procedures['makeTable'] = makeTable
    skill.procedures['dbGet'] = dbGet
    skill.procedures['mod'] = mod
@@ -741,6 +750,12 @@ def run(layermap_file,s,r,l):
    skill.procedures['dbCreateInst'] = findFunc('dbCreateInst')
    skill.procedures['dbFlattenInst'] = findFunc('dbFlattenInst')
    skill.procedures['writeout'] = writeout #for debugging
+   skill.procedures['pcExprToProp'] = nullfunc
+   skill.procedures['dbAddFigToNet'] = nullfunc
+   skill.procedures['dbMakeNet'] = nullfunc
+   skill.procedures['dbFindTermByName'] = nullfunc
+   skill.procedures['dbCreateTerm'] = nullfunc
+   skill.procedures['dbCreatePin'] = nullfunc
 
 def load_props(props_file):
    context.props = props.load_props(props_file)
