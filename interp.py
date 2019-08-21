@@ -44,7 +44,7 @@ from parsimonious.grammar import Grammar, Literal
 from parsimonious.nodes import NodeVisitor, Node
 from assembler.assembler import Code, Compare, dump, Pass
 from dis import dis
-from runtime import getsqg
+from runtime import getsqg, setsqg
 
 sys.setrecursionlimit(100*1000)
 
@@ -245,7 +245,7 @@ class Visitor(NodeVisitor):
 
     def compexpr(self, node, children, op):
        def gen(ref=False,children=children,op=op):
-          children[0](ref=ref)
+          r = children[0](ref=ref)
           #print node.expr_name
           if children[1]:
              #dump(self.c.code())
@@ -254,11 +254,12 @@ class Visitor(NodeVisitor):
                 e[1]()
                 self.c.COMPARE_OP(op)
              assert(ps == self.c.stack_size and ref==False)
+          return r
        return gen
 
     def binexpr(self, node, children, ops):
        def gen(ref=False,children=children,node=node,ops=ops):
-          children[0](ref=ref)
+          r = children[0](ref=ref)
           #is_sub=ops[0] == Code.BINARY_SUBTRACT
           #print node.expr_name
           if children[1]:
@@ -270,12 +271,13 @@ class Visitor(NodeVisitor):
                 for op in ops:
                    op(self.c)
              assert(ps == self.c.stack_size and ref==False)
+          return r
        return gen
 
     def nullexpr(self, node, children, ops):
        def gen(ref=False,children=children,ops=ops):
           try:
-             children[0](ref=ref)
+             return children[0](ref=ref)
           except Exception as e:
              print traceback.format_exc(e)
              print node.expr_name
@@ -291,11 +293,13 @@ class Visitor(NodeVisitor):
              print node.expr_name
              assert(False)
              exit(0)
-          c(ref=ref)          
+          r = c(ref=ref)          
           if children[op[0]]:
              if op[2]:
                self.coerse()
              op[1](self.c)
+          else:
+             return r
        return gen
 
     def incexpr(self, node, children, op):
@@ -306,8 +310,7 @@ class Visitor(NodeVisitor):
              assert(False)
              exit(0)
           if not children[op[0]]:
-             c(ref=ref)
-             return    
+             return c(ref=ref)
           postinc = op[0] == 0
        
           c(ref=True)
@@ -369,10 +372,10 @@ class Visitor(NodeVisitor):
        def gen(ref=False,children=children,op=op):
           #print "gen"
           #print children
-          children[0](ref=ref)
+          r = children[0](ref=ref)
 
           if not children[1]:
-            return
+            return r
 
           self.coerse()
  
@@ -437,7 +440,6 @@ class Visitor(NodeVisitor):
     def visit_lderefexpr(self,node,children):
        def gen(ref=False,children=children,node=node):
           if children[1]:
-             #assert(not ref) #TODO: setsqg on lists
              self.c.LOAD_GLOBAL("getsqg")
              lde1 = self.c.stack_size
              #pdb.set_trace()
@@ -452,9 +454,12 @@ class Visitor(NodeVisitor):
                 #stack : object, #vars, label
                 self.c.ROT_TWO()
                 self.c.POP_TOP()
-             self.c.CALL_FUNCTION(len(children[1])+1)              
+             self.c.CALL_FUNCTION(len(children[1])+1)      
+             print "******************" + str(ref)       
+             #assert(not ref)
+             return "sqg"
           else:
-             children[0](ref=ref) 
+             return children[0](ref=ref) 
        return gen
 
     def do_deref(self,ref,node,children):
@@ -532,11 +537,11 @@ class Visitor(NodeVisitor):
     def visit_tuple(self,node,children):
        #tuple       = ororexpr (ws? COLON ororexpr ws?)?
        def gen(ref=False,node=node,children=children):
-          children[0](ref=ref)
+          r = children[0](ref=ref)
           if children[1]:       
              children[1][0][2](ref=ref)
              self.c.BUILD_LIST(2)
-
+          return r
        return gen
 
     def do_return(self):
@@ -1010,17 +1015,21 @@ class Visitor(NodeVisitor):
     def visit_assign(self,node,children):
 #       assign     = tuple (EQU assign)?
         def gen(ref=False,node=node,children=children):
-            print not not children[1]
             if children[1]:
                #print "As: " + str(self.c.stack_size) 
                children[1][0][1]()  
                #stack: rhs
                self.c.DUP_TOP()
                #stack: rhs,rhs
-               children[0](ref=True)
-               #stack: rhs,rhs,obj,label
-               self.c.STORE_SUBSCR()#TOS1[TOS] = TOS2.
-               #print "Bs: " + str(self.c.stack_size) 
+               t = children[0](ref=True)
+               if t == "sqg":
+                  self.c.LOAD_GLOBAL("getsqg")
+                  self.c.ROT_THREE()
+                  self.c.CALL_FUNCTION(2,0)
+               else:
+                  #stack: rhs,rhs,obj,label
+                  self.c.STORE_SUBSCR()#TOS1[TOS] = TOS2.
+                  #print "Bs: " + str(self.c.stack_size) 
                #exit(0)
             else:
                children[0](ref=ref)

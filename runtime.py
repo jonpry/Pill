@@ -53,6 +53,9 @@ def getsqg(*s):
    print ret
    return ret
 
+def setsqg(a,b):
+   assert(False)
+
 def stringp(s):
    return isinstance(s,basestring)
 
