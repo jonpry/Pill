@@ -185,7 +185,7 @@ grammar = r"""
      RBR   = "]" ws?
      EXP   = "**" ws?
      COLON = ":" ws?
-     PRIME = "'"
+     PRIME = "'" ws?
      Q     = "?"
      ARROW = "->" ws?
      SARROW = "~>" ws?
@@ -437,6 +437,7 @@ class Visitor(NodeVisitor):
     def visit_lderefexpr(self,node,children):
        def gen(ref=False,children=children,node=node):
           if children[1]:
+             #assert(not ref) #TODO: setsqg on lists
              self.c.LOAD_GLOBAL("getsqg")
              lde1 = self.c.stack_size
              #pdb.set_trace()

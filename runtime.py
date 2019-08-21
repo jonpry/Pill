@@ -659,6 +659,7 @@ def run(layermap_file,s,r,l):
    skill.procedures['fixp'] = fixp
    skill.procedures['listp'] = listp
    skill.procedures['boundp'] = boundp
+   skill.procedures['zerop'] = nullfunc
    skill.procedures['null'] = null
    skill.procedures['errset'] = nullfunc
    skill.procedures['makeTable'] = makeTable
@@ -756,6 +757,7 @@ def run(layermap_file,s,r,l):
    skill.procedures['dbFindTermByName'] = nullfunc
    skill.procedures['dbCreateTerm'] = nullfunc
    skill.procedures['dbCreatePin'] = nullfunc
+   skill.procedures['dbCreatePolygon'] = nullfunc
 
 def load_props(props_file):
    context.props = props.load_props(props_file)
