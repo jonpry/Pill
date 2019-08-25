@@ -34,6 +34,7 @@ import tools
 import hashlib
 import marshal
 import copyreg
+import json
 import pickle
 import context
 from tools import Lazy
@@ -45,6 +46,8 @@ from parsimonious.nodes import NodeVisitor, Node
 from assembler.assembler import Code, Compare, dump, Pass
 from dis import dis
 from runtime import getsqg, setsqg
+import props
+from props import BooleanProperty
 
 sys.setrecursionlimit(100*1000)
 
@@ -194,6 +197,7 @@ grammar = r"""
      """
 
 verbose_visit=False
+lambda_count=0
 class Visitor(NodeVisitor):
     def __init__(self,breaks,useSkl):
         self.c = Code()
@@ -412,6 +416,18 @@ class Visitor(NodeVisitor):
        not_done = self.c.POP_JUMP_IF_FALSE()
        done2 = self.c.JUMP_FORWARD()
        not_done()
+
+       self.c.DUP_TOP()
+       self.c.LOAD_GLOBAL("isinstance")
+       self.c.ROT_TWO()
+       self.c.LOAD_GLOBAL("BooleanProperty")
+       self.c.CALL_FUNCTION(2)
+       not_done = self.c.POP_JUMP_IF_FALSE()
+       self.c.LOAD_CONST("value")
+       self.c.BINARY_SUBSCR()
+       done3 = self.c.JUMP_FORWARD()
+       not_done()
+
        #self.c.DUP_TOP()
        #self.c.LOAD_CONST("hasattr")
        #self.c.ROT_TWO()
@@ -429,6 +445,7 @@ class Visitor(NodeVisitor):
        self.c.LOAD_CONST(True)
        done1()
        done2()
+       done3()
        #done3()
        #done4()
     def visit_derefexpr(self,node,children):
@@ -912,21 +929,17 @@ class Visitor(NodeVisitor):
 
     def visit_exists(self,node,children):
        #EXISTS LPAR identifier ws? ororexpr ws? assign RPAR
+       #TODO: redo this to generate a lambda
        def gen(ref=False,node=node,children=children):
-          def pred(node=node,children=children):
+          self.push_lambda()
+          children[6]()
+          lam = self.pop_lambda()
+
+          def pred(node=node,children=children,lam=lam):
              self.c.POP_TOP()
-             self.pprint("v: ")
-             children[6]()
-             self.c.DUP_TOP()
-             self.coerse()
-             fwd = self.c.POP_JUMP_IF_FALSE()
-             self.c.BUILD_LIST(1)
-             self.pprint("pred: ")
-             ret=self.c.JUMP_FORWARD()   
-             fwd()
-             self.c.POP_TOP()
-             self.c.LOAD_CONST(None)
-             return ret
+             self.c.LOAD_GLOBAL(lam)
+             self.c.CALL_FUNCTION(0)
+
           children[4]()
           self.pprint("Range: ")
           self.c.POP_TOP()
@@ -947,8 +960,13 @@ class Visitor(NodeVisitor):
               self.c.LOAD_CONST(1)
               self.c.BINARY_ADD()
               self.c.CALL_FUNCTION(2)
+
+          def loop(node=node,children=children):
+              children[8]()
+              self.c.POP_TOP()
+              self.c.LOAD_CONST(False)
              
-          self.gen_loop(children[2]()[1],range_compute,children[8])
+          self.gen_loop(children[2]()[1],range_compute,loop)
        return gen
 
     def do_exit(self):
@@ -958,7 +976,7 @@ class Visitor(NodeVisitor):
         self.c.POP_TOP()
 
     def gen_loop(self,var,iter_obj,stmts,rtrue=True):
-        #print "ss: " + str(self.c.stack_size)
+        print "before for ss: " + str(self.c.stack_size)
         self.c.LOAD_GLOBAL('PushVars')
         self.c.LOAD_CONST(var)
         self.c.BUILD_LIST(1)
@@ -977,39 +995,52 @@ class Visitor(NodeVisitor):
         fwd = self.c.FOR_ITER()
         #self.pprint("Iter: ")        
 
+        self.c.DUP_TOP()
         self.c.LOAD_FAST("#vars")
         self.c.LOAD_CONST(var)
         self.c.STORE_SUBSCR()
         self.c.LOAD_CONST(None)
         #do statements
 
-        done = stmts() 
-
+        stmts() 
+        self.coerse()
+        fwd2 = self.c.POP_JUMP_IF_TRUE()
         self.c.POP_TOP()
         self.c.JUMP_ABSOLUTE(loop)
-        fwd()
-        fwd = self.c.JUMP_FORWARD()
+        fwd2()
+        self.pprint("on exit1")
 
-        if done:
-          done()
-          self.c.ROT_THREE()
-          self.c.POP_TOP()    
-          self.c.POP_TOP()    
-
+        self.c.ROT_TWO()
+        self.pprint("on exit2")
+        self.c.POP_TOP()
+        fwd2 = self.c.JUMP_FORWARD()
         fwd()
+        self.c.LOAD_CONST(False)
+        fwd2()
+
+        #self.pprint("on exit2")
 
         self.c.LOAD_GLOBAL('PopVars')
         self.c.LOAD_CONST(var)
         self.c.BUILD_LIST(1)
-        self.c.CALL_FUNCTION(1,0)    
-        if rtrue:
-           self.c.POP_TOP()    
-           self.c.LOAD_CONST(True) #foralways returns true
+        self.c.CALL_FUNCTION(1,0)
+        self.c.POP_TOP()    
+        #self.pprint("on exit3")
+
+#        if rtrue:
+#           self.c.POP_TOP()    
+#           self.c.LOAD_CONST(True) #for always returns true
+
+        self.pprint("on exit4")
 
     def visit_foreach(self,node,children):
        # FOREACH LPAR identifier ws? ororexpr ws? stmts RPAR
        def gen(node=node,children=children):
-          self.gen_loop(children[2]()[1],children[4],children[6])
+          def loop(node=node,children=children):
+             children[6]()
+             self.c.POP_TOP()
+             self.c.LOAD_CONST(False)
+          self.gen_loop(children[2]()[1],children[4],loop)
        return gen
 
     def visit_assign(self,node,children):
@@ -1023,9 +1054,11 @@ class Visitor(NodeVisitor):
                #stack: rhs,rhs
                t = children[0](ref=True)
                if t == "sqg":
-                  self.c.LOAD_GLOBAL("getsqg")
+                  self.c.LOAD_GLOBAL("setsqg")
                   self.c.ROT_THREE()
                   self.c.CALL_FUNCTION(2,0)
+                  self.c.POP_TOP()
+                  assert(False)
                else:
                   #stack: rhs,rhs,obj,label
                   self.c.STORE_SUBSCR()#TOS1[TOS] = TOS2.
@@ -1071,6 +1104,29 @@ class Visitor(NodeVisitor):
        self.c.LOAD_ATTR('variables')
        self.c.STORE_FAST('#vars')
 
+    def push_lambda(self):
+       global lambda_count
+       self.c = Code()
+       self.code_stack.append(self.c)
+
+       self.c.co_argcount = 0
+       self.c.co_varnames = []
+       self.c.co_firstlineno = 1
+       self.c.co_name = "lambda_" + str(lambda_count)
+       lambda_count += 1
+
+       self.prolog()
+
+    def pop_lambda(self):
+       self.c.RETURN_VALUE()
+       name = self.c.co_name
+       f = new.function(self.c.code(),globals())
+       dis(self.c.code())
+       #exit(0);
+       self.code_stack = self.code_stack[:-1]
+       self.c = self.code_stack[-1]
+       globals()[name] = f
+       return name
 
     def visit_procedure(self,node,children): 
         # PROCEDURE LPAR ws? identifier LPAR ws? (identifier ws?)* RPAR ws? stmts RPAR
@@ -1250,7 +1306,7 @@ def layout(cell,extra_params=None):
    loadcell(cell)
    global pcell_updates
    for name,value in pcell_updates:
-      context.bag[name]['value'] = value
+      context.bag[name] = props.StringProperty(name,value)
       run(context.props['cbs'][name])
    pcell_updates = []
 
@@ -1260,12 +1316,12 @@ def layout(cell,extra_params=None):
    if extra_params:
       assert(isinstance(extra_params,list))
       for t in extra_params:
-         context.params[t[0]] = t[2]
+         context.params[t[0]] = props.Property(t[0],t[2],t[1])
 
    print "inst params: " + str(context.params)
 
 
-   p = pickle.dumps(frozenset(context.params.items()))
+   p = json.dumps(context.params.items())
    h = hashlib.md5(p).hexdigest()
    cell_name = current_cell['cell_name'] + "@" + h[:10]
    
@@ -1273,7 +1329,12 @@ def layout(cell,extra_params=None):
      context.pop()
      return cell_lib[cell_name]
    runtime.push_cell(cell_name)
-   print skill.procedures[current_cell['func']]({'parameters' : context.params, 'lib' : {'name' : skill.variables['cdfgData']['id']['lib']['name']} , 'cell' : {'name' : skill.variables['cdfgData']['id']['cell']['name']}} )
+
+#   print skill.procedures[current_cell['func']]({'parameters' : context.params, 'lib' : {'name' : skill.variables['cdfgData']['id']['lib']['name']} , 'cell' : {'name' : skill.variables['cdfgData']['id']['cell']['name']}} )
+   print skill.procedures[current_cell['func']]({'parameters' : context.params, 
+                 'lib' : props.Property('lib','foo','string'),
+                 'cell' : props.Property('cell','bar','string')} )
+
    context.pop()
    cell_lib[cell_name] = runtime.pop_cell()
    return cell_lib[cell_name]
@@ -1320,25 +1381,27 @@ def load_props(props):
 
 def apply_params():
    for k,v in context.bag.iteritems():
-      if isinstance(v,dict):
+      if isinstance(v,props.StringProperty) or isinstance(v,props.BooleanProperty) or isinstance(v,props.FloatProperty) or isinstance(v,props.IntProperty) or isinstance(v,props.ListProperty):
          if 'value' in v:
-            context.params[k] = v['value']
+            context.params[k] = props.Property(k,v['value'],v['valueType'])
 
 def cdfg_init(library,cell_name):
    skill.variables['cdfgData'] = context.bag
    skill.variables['cdfgData']['id'] = {'lib' : {'name' : library} , 'cell' : {'name' : cell_name}, 'libName' : library, 'cellName' : cell_name, 'name' : cell_name}
    skill.variables['cdfgData']['recall'] = {'value' : '0'}
 
-
 def loadcell(cell):
    global current_cell
    #load defaults into interpreter
+   print "cd: " + str(cell_defs.keys())
    current_cell = cell_defs[cell]
    context.params = {}
    load_defaults(current_cell['defaults'])
 
    if "props" in current_cell:
       load_props(current_cell['props'])
+
+   context.params = context.bag
 
    #This initializes the pcell callback stuff
    cdfg_init(current_cell['library'],current_cell['cell_name'])

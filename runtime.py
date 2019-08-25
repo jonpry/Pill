@@ -35,21 +35,36 @@ layout.dbu = .001
 
 ######## These are implementations of Skill standard library functions
 def getsqg(*s):
+   print "*****GetSqG" + str(len(s))
    ret = None
-   if not isinstance(s[0],list):
-      ret = s[0][s[1]]
+   print s[0]
+   print s[1]
+   l = s[0]
+
+   #if isinstance(l,props.PropertyDict):
+   #   l = l.values()
+
+   print "blah"
+   print "gsq: " + str(l)
+   if not l:
+      return l
+   if not isinstance(l,list):
+      print "not list"
+      if s[1] in l:
+        ret = l[s[1]]
    else:
+      print "was list"
       ret = []
-      for e in s[0]:
+      for e in l:
          if s[1] in e:
             ret.append(e[s[1]])
       if len(ret) == 1:
          ret = ret[0]
       if len(ret) == 0:
-         ret = Npne
+         ret = None
    if len(s) > 2:
       ret = getsqg([ret] + s[2:])
-   print "*****GetSqG"
+   print "*****GetSqG ret"
    print ret
    return ret
 
@@ -57,16 +72,16 @@ def setsqg(a,b):
    assert(False)
 
 def stringp(s):
-   return isinstance(s,basestring)
+   return isinstance(s,basestring) or isinstance(s,props.StringProperty)
 
 def floatp(s):
    return isinstance(s,float)
 
 def fixp(s):
-   return isinstance(s,int)
+   return isinstance(s,int) and not (isinstance(s,bool) or isinstance(s,props.BooleanProperty))
 
 def numberp(s):
-   return isinstance(s,int) or isinstance(s,float)
+   return fixp(s) or isinstance(s,float)
 
 def boundp(e):
    return e.expr in skill.variables
@@ -110,7 +125,9 @@ def listl(*args,**kwargs):
 
 def car(l):
    print l
-   return l[0]
+   if isinstance(l,list):
+      return l[0]
+   return l
 
 def cadr(l):
    return l[1]
@@ -138,6 +155,7 @@ def techGetParam(db,ob):
    return techParms[ob]
 
 def cdfParseFloatString(s):
+   print "cdfParseFloatString: " + str(s) + ", " + str(s[-1])
    postfix = 1.0
    if s[-1] == "n":
       postfix = 1e-9 
@@ -157,7 +175,9 @@ def cdfParseFloatString(s):
    return v
 
 def maplayer(layer):
+   print layer[0]
    if not isinstance(layer,list):
+      print "drawing"
       layer = [layer, "drawing"]
    if (layer[0],layer[1]) in layermap:
       l1 = layermap[ (layer[0],layer[1]) ]
@@ -197,6 +217,7 @@ def rodCreateRect(layer,width=0,length=0,origin=[0,0],name="",elementsX=1,elemen
     
    objs.reverse()
    if len(objs)==1:
+      print objs[0]
       rodsByName[name] = objs[0]
       return objs[0]
    rodsByName[name] = objs
@@ -227,6 +248,7 @@ def rodTranslate(alignObj,delta,internal=False,done=None):
 def rodAlign(alignObj,alignHandle,refObj=None,refHandle=None,ySep=0,xSep=0,refPoint=None):
    print "ref: " + str(refObj)
    print "alg: " + str(alignObj)
+   print "pnt: " + str(refPoint)
 
    m = { "lowerLeft" : "lL", "upperLeft" : "uL", "lowerRight" : "lR", "upperRight" : "uR", "lowerCenter" : "lC", 
          "upperCenter" : "uC", "centerCenter" : "cC", "centerRight" : "cR", "centerLeft" : "cL"}
@@ -304,10 +326,11 @@ def rodFillBBoxWithRects(layer,fillBBox,width,length,spaceX,spaceY,gap="distribu
 def createObj(dbox=None,subs=None):
    if not(dbox or (subs and len(subs) > 0 and subs[0])):
        return None
+   print "dbox: " + str(dbox)
    if subs:
       for s in subs:
          if dbox:
-            dbox = dbox + s.dbbox
+            dbox = dbox + s.dbbox()
          else:
             dbox = s.dbbox()
 
@@ -416,8 +439,11 @@ def rodAssignHandleToParameter(**kwargs):
 
 def rodGetObj(i):
    print "rodGetObject: " + str(i)
+   print rodsByName.keys()
    if i in rodsByName:
+      print rodsByName[i]
       return rodsByName[i]
+
    s = i.split("/")
    if len(s) > 1:
      tx = []
@@ -581,9 +607,12 @@ def nth(i,l): #TODO: not sure about this
    return l[int(i)]
 
 def getLast(l):
+   if not l:
+     return l
    return l[-1]
 
 def typep(v):
+#TODO: handle props
    if isinstance(v,float):
       return Lazy('flonum',evalstring)
    if isinstance(v,basestring):
@@ -599,6 +628,7 @@ def null(v):
    return not v
 
 def eval(v):
+#TODO: handle props
    if isinstance(v,Lazy):
       return interp(v.expr)
    if isinstance(v,basestring):
