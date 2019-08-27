@@ -450,7 +450,7 @@ class Visitor(NodeVisitor):
        #done4()
     def visit_derefexpr(self,node,children):
        def gen(ref=False,node=node,children=children):
-          self.do_deref(ref,node,children)
+          return self.do_deref(ref,node,children)
        return gen
 
     #TODO: this does not actually work if item is a list
@@ -527,7 +527,7 @@ class Visitor(NodeVisitor):
                    self.c.BINARY_SUBSCR()
                 #stack new object
           else:
-             children[0](ref=ref)
+             return children[0](ref=ref)
 
     def visit_aryexpr(self,node,children):
        #aryexpr    = vexpr ws? (LBR ororexpr RBR)?
@@ -539,15 +539,17 @@ class Visitor(NodeVisitor):
              if not ref:
                 self.c.BINARY_SUBSCR()
           else:
-             children[0](ref=ref)
+             return children[0](ref=ref)
        return gen
 
     def visit_vexpr(self,node,children):
        def gen(ref=False,node=node,children=children):
           if hasattr(children[0],"__len__"):
-             children[0][1](ref=ref)
-             return
-          children[0](ref=ref)
+             r = children[0][1](ref=ref)
+             return r
+          r = children[0](ref=ref)
+          assert(r != "sqg")
+          return r
        #print "v: " + str(gen)
        return gen
 
@@ -937,7 +939,9 @@ class Visitor(NodeVisitor):
 
           def pred(node=node,children=children,lam=lam):
              self.c.POP_TOP()
-             self.c.LOAD_GLOBAL(lam)
+             self.c.LOAD_FAST('#procs')
+             self.c.LOAD_CONST(lam)
+             self.c.BINARY_SUBSCR()
              self.c.CALL_FUNCTION(0)
 
           children[4]()
@@ -1058,14 +1062,13 @@ class Visitor(NodeVisitor):
                   self.c.ROT_THREE()
                   self.c.CALL_FUNCTION(2,0)
                   self.c.POP_TOP()
-                  assert(False)
                else:
                   #stack: rhs,rhs,obj,label
                   self.c.STORE_SUBSCR()#TOS1[TOS] = TOS2.
                   #print "Bs: " + str(self.c.stack_size) 
                #exit(0)
             else:
-               children[0](ref=ref)
+               return children[0](ref=ref)
         return gen
 
     def visit_stmt(self,node,children):
@@ -1125,7 +1128,9 @@ class Visitor(NodeVisitor):
        #exit(0);
        self.code_stack = self.code_stack[:-1]
        self.c = self.code_stack[-1]
-       globals()[name] = f
+       skill.procedures[name] = f
+       skill.iprocs[name] = f.__code__
+
        return name
 
     def visit_procedure(self,node,children): 
