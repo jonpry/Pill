@@ -69,7 +69,8 @@ def getsqg(*s):
    return ret
 
 def setsqg(a,b):
-   assert(False)
+   #assert(False)
+   pass
 
 def stringp(s):
    return isinstance(s,basestring) or isinstance(s,props.StringProperty)
@@ -179,6 +180,10 @@ def maplayer(layer):
    if not isinstance(layer,list):
       print "drawing"
       layer = [layer, "drawing"]
+
+   if isinstance(layer[0],int):
+      return layout.layer(int(layer[0]),0) #TODO: handle purpose
+
    if (layer[0],layer[1]) in layermap:
       l1 = layermap[ (layer[0],layer[1]) ]
       print "layer: " + str(l1)
@@ -497,8 +502,7 @@ def snapToGrid(v,g):
 
 #dbCreateLabel(cv 4 1:1 "myLabel" "centerLeft" "R0" "roman" 2)
 def dbCreateLabel(cell,layer,origin,text,justification,orientation,font,height):
-   l1 = layermap[ (layer[0],layer[1]) ]
-   l1 = layout.layer(l1[0], l1[1]) 
+   l1 = maplayer(layer)
    t = db.DText.new(text,origin[0],origin[1])
    t.size = height
    t.halign = 1 #center
@@ -526,7 +530,7 @@ def getRot(o):
    assert(False)
 
 def dbCreateParamInst(view, cell, name, origin, orient, num=1, parm=None, phys=False):
-   print "dbCreateParamInst: \"" + name + "\", " + cell + ", " + str(origin) + "," + str(orient) 
+   print "dbCreateParamInst: \"" + str(cell) + "\", " + str(name) + ", " + str(origin) + "," + str(orient) 
 
    assert(num==1) 
 
@@ -791,6 +795,7 @@ def run(layermap_file,s,r,l):
    skill.procedures['dbCreateTerm'] = nullfunc
    skill.procedures['dbCreatePin'] = nullfunc
    skill.procedures['dbCreatePolygon'] = nullfunc
+   skill.procedures['dbDeleteObject'] = nullfunc
 
 def load_props(props_file):
    context.props = props.load_props(props_file)
