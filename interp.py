@@ -65,7 +65,7 @@ grammar = r"""
      block       = ws? stmts
      procedure   = PROCEDURE ws? LPAR ws? identifier ws? LPAR ws? (identifier ws?)* string? ws? (OPTIONAL ws? LPAR ((identifier/NIL) ws? RPAR)*)? RPAR ws? stmts RPAR
      identifier  = !((reserved ) (ws/RPAR/EQU/PLUS/MINUS/RBR/BANG/TILDA/LT/GT/DOT/LPAR)) ~r"[a-zA-Z_][a-zA-Z_0-9\?]*"
-     reserved    = IF / ELSE / THEN / FOR / PROCEDURE / WHEN / LET / UNLESS / CASE / NIL / FOREACH / SETOF / EXISTS / TAU / RETURN / COND / WHILE / OPTIONAL
+     reserved    = IF / ELSE / THEN / FOR / PROCEDURE / WHEN / LET / UNLESS / CASE / NIL / FOREACH / SETOF / EXISTS / TAU / RETURN / COND / WHILE / OPTIONAL / PROG
      list        = LPAR (listelem ws?)* RPAR
      keyword_func= LPAR func_name ws? ((Q identifier ws?)? ororexpr ws?)+ RPAR
      func_call2  = func_name LPAR ws? ((Q identifier ws?)? ororexpr ws?)+ RPAR
@@ -92,7 +92,7 @@ grammar = r"""
      stmts       = stmt ws? stmts?
       
 
-     value      = (keyword_func/func_call2/if/exists/identifier/number/string/NIL/TAU) ws?
+     value      = (keyword_func/func_call2/if/exists/identifier/number/string/NIL/TAU/proglet) ws?
 
  
      vexpr      = (LPAR assign RPAR) / value

@@ -37,31 +37,34 @@ layout.dbu = .001
 def getsqg(*s):
    print "*****GetSqG" + str(len(s))
    ret = None
-   print s[0]
+   #print s[0]
    print s[1]
    l = s[0]
 
-   #if isinstance(l,props.PropertyDict):
-   #   l = l.values()
-
-   print "blah"
-   print "gsq: " + str(l)
    if not l:
       return l
-   if not isinstance(l,list):
-      print "not list"
+
+   if isinstance(l,props.PropertyDict):
       if s[1] in l:
         ret = l[s[1]]
-   else:
-      print "was list"
-      ret = []
-      for e in l:
-         if s[1] in e:
-            ret.append(e[s[1]])
-      if len(ret) == 1:
-         ret = ret[0]
-      if len(ret) == 0:
-         ret = None
+      else:
+        l = l.values()
+
+   if not ret:
+      if not isinstance(l,list):
+         print "not list"
+         if s[1] in l:
+           ret = l[s[1]]
+      else:
+         print "was list"
+         ret = []
+         for e in l:
+            if s[1] in e:
+               ret.append(e[s[1]])
+         if len(ret) == 1:
+            ret = ret[0]
+         if len(ret) == 0:
+            ret = None
    if len(s) > 2:
       ret = getsqg([ret] + s[2:])
    print "*****GetSqG ret"

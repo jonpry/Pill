@@ -119,9 +119,13 @@ class ListProperty(list):
 class BooleanProperty(int):
    __ignore__ = "class mro new init setattr getattr getattribute getitem hash eq"
    def __new__(cls,name,value):
+       if value == "nil":
+          value = False
        return super(BooleanProperty,cls).__new__(cls,bool(value))
 
    def __init__(self,name,value):
+       if value == "nil":
+          value = False
        self.name = name
        self.wrapped = int(bool(value))
 
@@ -129,7 +133,8 @@ class BooleanProperty(int):
        return key == "value" or key == "valueType" or key == "name"
 
    def __eq__(self,b):
-       if not b:
+       #TODO: there are more cases of odd coercions to do here. such as "TRUE" and "FALSE"
+       if not b or b == "nil":
           return self.wrapped == 0
        return self.wrapped == 1
 
@@ -249,6 +254,7 @@ class StringProperty(str):
 
 
 def Property(name,value,t):
+
     if t == "boolean":
        return BooleanProperty(name,value)
     if t == "string":
