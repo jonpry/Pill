@@ -199,17 +199,19 @@ grammar = r"""
 verbose_visit=False
 lambda_count=0
 class Visitor(NodeVisitor):
-    def __init__(self,breaks,useSkl):
+    def __init__(self,breaks,useSkl,filename):
         self.c = Code()
         self.c.co_argcount = 0
         self.c.co_varnames = []
         self.c.co_firstlineno = 1
+        self.c.co_filename = filename;
         self.code_stack = [self.c]
         self.locals = []
         self.returns = []
         self.blocks = 0
         self.useSkl = useSkl
         self.breaks = breaks
+        self.filename = filename
         self.unwrapped_exceptions = (Exception)
 
         comps = { "eqexpr" : "==", "neqexpr" : "!=", "ltexpr" : "<", "leexpr" : "<=", "gtexpr" : ">", "geexpr" : ">="}
@@ -1145,8 +1147,11 @@ class Visitor(NodeVisitor):
            self.c.co_argcount = 0
            self.c.co_varnames = []
            self.c.co_firstlineno = 1
+           self.c.co_filename = self.filename;
 
            proc = children[4]()[1]
+           if proc == "pcGenCell":
+              proc = proc + "_" + self.filename.split(".")[0].replace("/","_") 
            #print proc
            self.c.co_name = proc
 
@@ -1249,7 +1254,7 @@ grammar = Grammar(grammar)
 def update_grammar():
    grammar['func_name'].members = [Literal(x) for x in sorted(skill.procedures.keys(),key=lambda x: -len(x))]
 
-def run(s,code=False):
+def run(s,filename,code=False):
    global iv
    breaks = []
    for m in re.finditer(r'\n', s):
@@ -1258,10 +1263,10 @@ def run(s,code=False):
    update_grammar()
    if code:
       g =  grammar.parse(s)#e)
-      iv = Visitor(breaks,True)
+      iv = Visitor(breaks,True,filename)
    else:
       g =  grammar.parse(s)#e)
-      iv = Visitor(breaks,False)
+      iv = Visitor(breaks,False,filename)
 
    #if not code:
    #   print g
@@ -1273,7 +1278,7 @@ def run(s,code=False):
    return r
 
 def load(f):
-   return run(open(f,"r").read().split("#####")[0],True) 
+   return run(open(f,"r").read().split("#####")[0],f,True) 
 
 
 def PushVars(l):
@@ -1312,7 +1317,7 @@ def layout(cell,extra_params=None):
    global pcell_updates
    for name,value in pcell_updates:
       context.bag[name] = props.StringProperty(name,value)
-      run(context.props['cbs'][name])
+      run(context.props['cbs'][name],"props","unknown")
    pcell_updates = []
 
    #Must be called after pcell updates
