@@ -35,28 +35,29 @@ layout.dbu = .001
 
 ######## These are implementations of Skill standard library functions
 def getsqg(*s):
-   print "*****GetSqG" + str(len(s))
+   print("*****GetSqG" + str(len(s)))
    ret = None
    #print s[0]
-   print s[1]
+   print(s[1])
    l = s[0]
 
    if not l:
       return l
 
    if isinstance(l,props.PropertyDict):
+      print("was property dict")
       if s[1] in l:
         ret = l[s[1]]
       else:
-        l = l.values()
+        l = list(l.values())
 
    if not ret:
       if not isinstance(l,list):
-         print "not list"
+         print("not list")
          if s[1] in l:
            ret = l[s[1]]
       else:
-         print "was list"
+         print("was list")
          ret = []
          for e in l:
             if s[1] in e:
@@ -67,8 +68,8 @@ def getsqg(*s):
             ret = None
    if len(s) > 2:
       ret = getsqg([ret] + s[2:])
-   print "*****GetSqG ret"
-   print ret
+   print("*****GetSqG ret")
+   print(ret)
    return ret
 
 def setsqg(a,b):
@@ -76,7 +77,7 @@ def setsqg(a,b):
    pass
 
 def stringp(s):
-   return isinstance(s,basestring) or isinstance(s,props.StringProperty)
+   return isinstance(s,str) or isinstance(s,props.StringProperty)
 
 def floatp(s):
    return isinstance(s,float)
@@ -98,19 +99,30 @@ def mod(a,b):
 
 def fix(a):
    r = int(math.floor(a))
-   print "floor: " + str(a) + "=" + str(r)
+   print("floor: " + str(a) + "=" + str(r))
    return r
 
 def dbGet(a,b):
-   print b
+   print(b)
    if b in context.bag:
-      print context.bag[b]
+      print(context.bag[b])
       return context.bag[b]
    else:
       return None
 
 def sprintf(foo,format,*args):
-   return format.replace("%L","%s") % args
+   nargs = []
+   for i in range(len(args)):
+      if isinstance(args[i],Lazy):
+         nargs.append(args[i].deref()) 
+      else:
+         nargs.append(args[i])
+      if nargs[i] == None:
+         nargs[i] = 0;
+   nargs=tuple(nargs) 
+   print(format)
+   print(nargs)
+   return format.replace("%L","%s") % nargs
 
 def printf(format, *args):
    sys.stdout.write(sprintf(None,format,*args))
@@ -124,11 +136,11 @@ def listl(*args,**kwargs):
    if len(kwargs.keys()):
       assert(len(args) == 0)
       return kwargs
-   print "listl: " + str(args)
+   print("listl: " + str(args))
    return list(args)
 
 def car(l):
-   print l
+   print(l)
    if isinstance(l,list):
       return l[0]
    return l
@@ -149,9 +161,9 @@ def yCoord(l):
    return l[1]
 
 def evalstring(s):
-   print "eval: " + s
+   print("eval: " + s)
    v = interp(s)
-   print v
+   print(v)
    return v
 
 def techGetParam(db,ob):
@@ -159,7 +171,15 @@ def techGetParam(db,ob):
    return techParms[ob]
 
 def cdfParseFloatString(s):
-   print "cdfParseFloatString: " + str(s) + ", " + str(s[-1])
+   print("cdfParseFloatString: " + str(s) + ", " + str(s[-1]) + ", " + str(type(s)))
+   for i in range(len(s)):
+     print(str(s[i]))
+
+   try:
+     return float(s)
+   except:
+     pass
+
    postfix = 1.0
    if s[-1] == "n":
       postfix = 1e-9 
@@ -173,15 +193,15 @@ def cdfParseFloatString(s):
    try:
       v = float(s)*postfix
    except:
-      print "*******" + s
+      print("*******" + s)
       raise
-   print "cdfFloat: " + str(v)
+   print("cdfFloat: " + str(v))
    return v
 
 def maplayer(layer):
-   print layer[0]
+   print(layer[0])
    if not isinstance(layer,list):
-      print "drawing"
+      print("drawing")
       layer = [layer, "drawing"]
 
    if isinstance(layer[0],int):
@@ -189,7 +209,7 @@ def maplayer(layer):
 
    if (layer[0],layer[1]) in layermap:
       l1 = layermap[ (layer[0],layer[1]) ]
-      print "layer: " + str(l1)
+      print("layer: " + str(l1))
       l1 = layout.layer(l1[0], l1[1])  
       return l1
    return -1
@@ -198,7 +218,7 @@ def rodCreateRectBase(layer,width,length,origin=[0,0],elementsX=1,spaceX=0,termI
    r = None
    l1 = maplayer(layer)
    if l1 >= 0:
-      print "found layer"
+      print("found layer")
       r = db.DBox.new(origin[0],origin[1],origin[0]+width,origin[1]+length).to_itype(0.001)
       r = top.shapes(l1).insert(r)
    return createObj(subs=[r])
@@ -216,7 +236,8 @@ def rodCreateRect(layer,width=0,length=0,origin=[0,0],name="",elementsX=1,elemen
      width = bBox[1][0] - bBox[0][0]
      length = bBox[1][1] - bBox[0][1]
       
-   print "rodCreateRect: " + str([locals()[arg] for arg in inspect.getargspec(rodCreateRect).args])
+   flocals = locals()
+   print("rodCreateRect: " + str([flocals[arg] for arg in inspect.getargspec(rodCreateRect).args]))
    objs = []
    for x in range(elementsX):
       for y in range(elementsY):
@@ -225,7 +246,7 @@ def rodCreateRect(layer,width=0,length=0,origin=[0,0],name="",elementsX=1,elemen
     
    objs.reverse()
    if len(objs)==1:
-      print objs[0]
+      print(objs[0])
       rodsByName[name] = objs[0]
       return objs[0]
    rodsByName[name] = objs
@@ -236,13 +257,13 @@ def rodTranslate(alignObj,delta,internal=False,done=None):
          "uC", "cC", "cR", "cL"]
    for h in m:
       alignObj[h] = addPoint(alignObj[h],delta)
-   print "ao: " + str(alignObj)
+   print("ao: " + str(alignObj))
    shapes = alignObj['_shapes']
-   print "shapes: " + str(shapes)
+   print("shapes: " + str(shapes))
    if not internal:
       done = set()
    for s in shapes:
-      print "s: " + str(s)
+      print("s: " + str(s))
       s.transform(db.DTrans.new(float(delta[0]),float(delta[1])))
    done.add(alignObj['_id'])
  
@@ -254,9 +275,9 @@ def rodTranslate(alignObj,delta,internal=False,done=None):
          rodTranslate(s,delta,True,done)
 
 def rodAlign(alignObj,alignHandle,refObj=None,refHandle=None,ySep=0,xSep=0,refPoint=None):
-   print "ref: " + str(refObj)
-   print "alg: " + str(alignObj)
-   print "pnt: " + str(refPoint)
+   print("ref: " + str(refObj))
+   print("alg: " + str(alignObj))
+   print("pnt: " + str(refPoint))
 
    m = { "lowerLeft" : "lL", "upperLeft" : "uL", "lowerRight" : "lR", "upperRight" : "uR", "lowerCenter" : "lC", 
          "upperCenter" : "uC", "centerCenter" : "cC", "centerRight" : "cR", "centerLeft" : "cL"}
@@ -274,7 +295,7 @@ def rodAlign(alignObj,alignHandle,refObj=None,refHandle=None,ySep=0,xSep=0,refPo
 
    delta = subPoint(refPoint,alignObj[alignHandle])
    delta = addPoint(delta,[xSep,ySep])
-   print "Align: " + str(delta)
+   print("Align: " + str(delta))
  
    rodTranslate(alignObj,delta)
    if refObj:
@@ -312,7 +333,7 @@ def maxNinN(limit,obj,space):
    return (n,space)
 
 def rodFillBBoxWithRects(layer,fillBBox,width,length,spaceX,spaceY,gap="distribute",cvId=None):
-   print "filBbox"
+   print("filBbox")
    assert(gap=="distribute")
    origin = fillBBox[0]
    bwidth = fillBBox[1][0] - fillBBox[0][0]
@@ -334,7 +355,7 @@ def rodFillBBoxWithRects(layer,fillBBox,width,length,spaceX,spaceY,gap="distribu
 def createObj(dbox=None,subs=None):
    if not(dbox or (subs and len(subs) > 0 and subs[0])):
        return None
-   print "dbox: " + str(dbox)
+   print("dbox: " + str(dbox))
    if subs:
       for s in subs:
          if dbox:
@@ -349,7 +370,7 @@ def createObj(dbox=None,subs=None):
    tlength = (ibox.p2.y-ibox.p1.y)*0.001
  
    if twidth > .09999999 and twidth < .1:
-      print "%.20e %.20e %.20e %d %d %.20e %.20e" % (twidth, dbox.p2.x, dbox.p1.x, ibox.p2.x, ibox.p1.x, 105*.001, 5*.001)
+      print("%.20e %.20e %.20e %d %d %.20e %.20e" % (twidth, dbox.p2.x, dbox.p1.x, ibox.p2.x, ibox.p1.x, 105*.001, 5*.001))
       assert(False)
    if not subs:
        subs = []
@@ -374,12 +395,12 @@ def createObj(dbox=None,subs=None):
    obj['lowerRight'] = obj['lR']
    obj['upperRight'] = obj['uR']
    obj['upperLeft'] = obj['uL']
-   print "createObj: " + str(obj)
+   print("createObj: " + str(obj))
    return obj
 
 def rodCreatePath(layer,width,pts,termIOType=None,termName=None,pin=None,subRect=None,name="",justification="center"):
   subs = []
-  print "createPath: " + str(pts) + ", layer: " + str(layer) + ", sub: " + str(subRect) + ", just: " + justification
+  print("createPath: " + str(pts) + ", layer: " + str(layer) + ", sub: " + str(subRect) + ", just: " + justification)
 
   r = None
   if (layer[0],layer[1]) in layermap:
@@ -416,7 +437,7 @@ def rodCreatePath(layer,width,pts,termIOType=None,termName=None,pin=None,subRect
 
   obj = createObj(subs=subs)
 
-  print "Path: " + str(obj)
+  print("Path: " + str(obj))
   rodsByName[name] = obj
   return obj
 
@@ -431,7 +452,7 @@ def rodAddToX(a,b):
 
 
 def rodCreatePolygon(name,layer,fromObj=None):
-   print "rodCreatePolygon: \"" + name + "\", " + str(layer)
+   print("rodCreatePolygon: \"" + name + "\", " + str(layer))
    l1 = maplayer(layer)
    assert(l1 >= 0)  
    r = db.DPolygon.new(db.DBox.new(fromObj['lL'][0],fromObj['lL'][1],fromObj['uR'][0],fromObj['uR'][1]))
@@ -442,20 +463,20 @@ def rodCreatePolygon(name,layer,fromObj=None):
    return obj
 
 def rodAssignHandleToParameter(**kwargs):
-   print "assignHandle: " + str(kwargs)
+   print("assignHandle: " + str(kwargs))
    return None
 
 def rodGetObj(i):
-   print "rodGetObject: " + str(i)
-   print rodsByName.keys()
+   print("rodGetObject: " + str(i))
+   print(rodsByName.keys())
    if i in rodsByName:
-      print rodsByName[i]
+      print(rodsByName[i])
       return rodsByName[i]
 
    s = i.split("/")
    if len(s) > 1:
      tx = []
-     print "rod subobject query: " + str(s)
+     print("rod subobject query: " + str(s))
      cmap = rodsByName
      inst = rodsByName[s[0]]
      dbox = None
@@ -471,7 +492,7 @@ def rodGetObj(i):
         dbox = e['_shapes'][0].dbbox()
      #accumulate the transforms
      if not got_shape:
-        print dbox
+        print(dbox)
         dbox.p1 = db.DPoint.new(0,0) #If only have a cell, then all stuff relative to origin
         dbox.p2 = dbox.p1
      total = db.DTrans()
@@ -490,7 +511,7 @@ def rodGetObj(i):
    write()
    assert(False)
    exit(0)
-   print "****************getObject failed"
+   print("****************getObject failed")
    return None
 
 def rodPointX(l):
@@ -511,14 +532,15 @@ def dbCreateLabel(cell,layer,origin,text,justification,orientation,font,height):
    t.halign = 1 #center
    t.valign = 1 #center
    top.shapes(l1).insert(t)
-   print "createLabel: " + str([locals()[arg] for arg in inspect.getargspec(dbCreateLabel).args])
+   flocals = locals()
+   print("createLabel: " + str([flocals[arg] for arg in inspect.getargspec(dbCreateLabel).args]))
 
 def dbOpenCellViewByType(lib,cell,purpose,t):
-   print "dbOpenCellViewByType: " + cell
+   print("dbOpenCellViewByType: " + cell)
    return cell
 
 def dbCreateRect(cell,layer,coord):
-   print "dbCreateRect: " + str(layer) + ", " + str(coord)
+   print("dbCreateRect: " + str(layer) + ", " + str(coord))
    return rodCreateRect(layer,coord[1][0] - coord[0][0],coord[1][1] - coord[0][1],coord[0])
 
 def getRot(o):
@@ -533,7 +555,7 @@ def getRot(o):
    assert(False)
 
 def dbCreateParamInst(view, cell, name, origin, orient, num=1, parm=None, phys=False):
-   print "dbCreateParamInst: \"" + str(cell) + "\", " + str(name) + ", " + str(origin) + "," + str(orient) 
+   print("dbCreateParamInst: \"" + str(cell) + "\", " + str(name) + ", " + str(origin) + "," + str(orient))
 
    assert(num==1) 
 
@@ -546,12 +568,12 @@ def dbCreateParamInst(view, cell, name, origin, orient, num=1, parm=None, phys=F
    return rodobj
 
 def dbCreateParamInstByMasterName(view, lib, cell, purpose, name, origin, orient, num=1, params=None, phys=False):
-   print "paraminst"
+   print("paraminst")
    dbCreateParamInst(view,cell,name,origin,orient,num,params,phys)
    return None
 
 def get_pname(s):
-   print "get_pname: " + str(s)
+   print("get_pname: " + str(s))
    return s
 
 env = {}
@@ -562,7 +584,7 @@ def concat(*args):
    ret = ""
    for a in args:
       ret += str(a)
-   print "Concat: " + ret
+   print("Concat: " + ret)
    return ret
 
 def rexMatchp(r,s):
@@ -611,6 +633,9 @@ def strcat(*a):
    return ret
 
 def nth(i,l): #TODO: not sure about this
+   if isinstance(l,Lazy):
+      print(l.expr)
+   #   l = interp(l.expr)
    return l[int(i)]
 
 def getLast(l):
@@ -622,13 +647,13 @@ def typep(v):
 #TODO: handle props
    if isinstance(v,float):
       return Lazy('flonum',evalstring)
-   if isinstance(v,basestring):
+   if isinstance(v,str):
       return Lazy('string',evalstring)
    if isinstance(v,list):
       return Lazy('list',evalstring)
    if isinstance(v,int):
       return Lazy('fixnum',evalstring)
-   print type(v)
+   print(type(v))
    assert(False) #TODO:
 
 def null(v):
@@ -638,7 +663,7 @@ def eval(v):
 #TODO: handle props
    if isinstance(v,Lazy):
       return interp(v.expr)
-   if isinstance(v,basestring):
+   if isinstance(v,str):
       return skill.variables[v]
    return v
 
@@ -663,8 +688,8 @@ def substring(s,b,l):
 
 def findFunc(name):
    def find(*args):
-      print "********************" + name
-      print args
+      print("********************" + name)
+      print(args)
       assert(False)
       exit(0)
    return find

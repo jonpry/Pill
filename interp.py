@@ -19,16 +19,12 @@
 
 import re
 import numpy as np
-import compiler
 import sys
 import types
 import dis
-import compiler
 import pdb
-import new
 import inspect
 import traceback
-import peak
 import bisect
 import tools
 import hashlib
@@ -43,7 +39,7 @@ from types import FunctionType
 from functools import wraps
 from parsimonious.grammar import Grammar, Literal
 from parsimonious.nodes import NodeVisitor, Node
-from assembler.assembler import Code, Compare, dump, Pass
+from assembler.assembler import Code, Compare, dump
 from dis import dis
 from runtime import getsqg, setsqg
 import props
@@ -53,9 +49,9 @@ sys.setrecursionlimit(100*1000)
 
 def flatten(items):
     for x in items:
-        print x
+        print(x)
         if (hasattr(x, '__iter__') or hasattr(x, '__getitem__')) and not isinstance(x, (str, bytes)):
-            print "it"
+            print("it")
             for sub_x in flatten(x):
                 yield sub_x
         else:
@@ -215,8 +211,8 @@ class Visitor(NodeVisitor):
         self.unwrapped_exceptions = (Exception)
 
         comps = { "eqexpr" : "==", "neqexpr" : "!=", "ltexpr" : "<", "leexpr" : "<=", "gtexpr" : ">", "geexpr" : ">="}
-        for k,v in comps.iteritems():
-           setattr(self, "visit_" + k, types.MethodType(lambda self, node, children, v=v: self.compexpr(node,children,v), self, Visitor))
+        for k,v in comps.items():
+           setattr(self, "visit_" + k, types.MethodType(lambda self, node, children, v=v: self.compexpr(node,children,v), self))
       
         binary = { "bandexpr" : [Code.BINARY_AND],      "plusexpr" : [Code.BINARY_ADD], "diffexpr" : [Code.BINARY_SUBTRACT],
                    "borexpr"  : [Code.BINARY_OR],       "bxorexpr" : [Code.BINARY_XOR],  "divexpr" : [Code.BINARY_DIVIDE], 
@@ -226,28 +222,28 @@ class Visitor(NodeVisitor):
                    "bnandexpr": [Code.BINARY_AND, Code.UNARY_INVERT],
                    "bxnorexpr": [Code.BINARY_XOR, Code.UNARY_INVERT],
                    "getrefexpr"   : [Code.BINARY_LSHIFT],} #TODO: not implemented
-        for k,v in binary.iteritems():
-           setattr(self, "visit_" + k, types.MethodType(lambda self, node, children, v=v: self.binexpr(node,children,v), self, Visitor))
+        for k,v in binary.items():
+           setattr(self, "visit_" + k, types.MethodType(lambda self, node, children, v=v: self.binexpr(node,children,v), self))
       
         unary = { "negexpr" : [0,Code.UNARY_NEGATIVE,False], "bnotexpr" : [0,Code.UNARY_INVERT,False], "notexpr" : [0,Code.UNARY_NOT,True],
                   "dotexpr" : [0,Code.UNARY_NEGATIVE,False]}
 
-        for k,v in unary.iteritems():
-           setattr(self, "visit_" + k, types.MethodType(lambda self, node, children, v=v: self.unaexpr(node,children,v), self, Visitor))
+        for k,v in unary.items():
+           setattr(self, "visit_" + k, types.MethodType(lambda self, node, children, v=v: self.unaexpr(node,children,v), self))
 
         incdec = {"podecexpr" : [1,-1], "prdecexpr" : [0,-1], #TODO inc/dec not implemented yet
                   "poincexpr" : [1,+1], "princexpr" : [0,+1]}
 
-        for k,v in incdec.iteritems():
-           setattr(self, "visit_" + k, types.MethodType(lambda self, node, children, v=v: self.incexpr(node,children,v), self, Visitor))
+        for k,v in incdec.items():
+           setattr(self, "visit_" + k, types.MethodType(lambda self, node, children, v=v: self.incexpr(node,children,v), self))
 
         logical = { "ororexpr" : [Code.POP_JUMP_IF_TRUE, True], "andandexpr" : [Code.POP_JUMP_IF_FALSE, False]}
-        for k,v in logical.iteritems():
-           setattr(self, "visit_" + k, types.MethodType(lambda self, node, children, v=v: self.logicexpr(node,children,v), self, Visitor))
+        for k,v in logical.items():
+           setattr(self, "visit_" + k, types.MethodType(lambda self, node, children, v=v: self.logicexpr(node,children,v), self))
 
         nulls = ["rangeexpr", "bitexpr", "listelem"]
         for k in nulls:
-           setattr(self, "visit_" + k, types.MethodType(lambda self, node, children, v=v: self.nullexpr(node,children,v), self, Visitor))
+           setattr(self, "visit_" + k, types.MethodType(lambda self, node, children, v=v: self.nullexpr(node,children,v), self))
 
     def compexpr(self, node, children, op):
        def gen(ref=False,children=children,op=op):
@@ -285,9 +281,9 @@ class Visitor(NodeVisitor):
           try:
              return children[0](ref=ref)
           except Exception as e:
-             print traceback.format_exc(e)
-             print node.expr_name
-             print node.text
+             print(traceback.format_exc(limit=5))
+             print(node.expr_name)
+             print(node.text)
              exit(0)
 
        return gen
@@ -296,7 +292,7 @@ class Visitor(NodeVisitor):
        def gen(ref=False,children=children,op=op,node=node):
           c = children[(op[0]+1)%2]
           if isinstance(c,list):
-             print node.expr_name
+             print(node.expr_name)
              assert(False)
              exit(0)
           r = c(ref=ref)          
@@ -312,7 +308,7 @@ class Visitor(NodeVisitor):
        def gen(ref=False,children=children,op=op,node=node):
           c = children[(op[0]+1)%2]
           if isinstance(c,list):
-             print node.expr_name
+             print(node.expr_name)
              assert(False)
              exit(0)
           if not children[op[0]]:
@@ -343,12 +339,22 @@ class Visitor(NodeVisitor):
              self.c.POP_TOP()
              #key,obj,newvalue
              self.c.DUP_TOP()
-             self.c.ROT_FOUR()
+             self.c.STORE_FAST("#temp")   
+             self.c.ROT_THREE()
+             self.c.LOAD_FAST("#temp")   
              #newvalue,key,obj,newvalue
           else:
              self.c.ROT_TWO()
              #key,obj,newvalue,value
-             self.c.ROT_FOUR()
+             self.c.STORE_FAST("#temp")
+             #key,obj,newvalue
+             self.c.BUILD_TUPLE(3)                
+             #(key,obj,newvalue)
+             self.c.LOAD_FAST("#temp")
+             #(key,obj,newvalue),value   
+             self.c.ROT_TWO()
+             #value,(key,obj,newvalue)
+             self.c.UNPACK_SEQUENCE(3)
              #value,key,obj,newvalue
 
           self.c.ROT_THREE()
@@ -369,7 +375,7 @@ class Visitor(NodeVisitor):
           self.c.LOAD_CONST(node.text[1:])
           self.c.LOAD_GLOBAL('runtime')
           self.c.LOAD_ATTR('evalstring')
-          self.c.CALL_FUNCTION(2,0)
+          self.c.CALL_FUNCTION(2)
        return gen
 
     def logicexpr(self, node, children, op):
@@ -474,7 +480,7 @@ class Visitor(NodeVisitor):
                 self.c.ROT_TWO()
                 self.c.POP_TOP()
              self.c.CALL_FUNCTION(len(children[1])+1)      
-             print "******************" + str(ref)       
+             print("******************" + str(ref))       
              #assert(not ref)
              return "sqg"
           else:
@@ -600,7 +606,7 @@ class Visitor(NodeVisitor):
                 m+=t
                 v = float(m)
              else:
-                print t
+                print(t)
                 assert(False)
                 exit(0)
           else:
@@ -614,7 +620,7 @@ class Visitor(NodeVisitor):
     def visit_string(self, node, children):
        def gen(ref=False,node=node):
           t = node.text[1:][:-1]
-          t = t.decode('string_escape')
+          t = t.encode('UTF-8').decode('unicode_escape')
           self.c.LOAD_CONST(t)
        return gen
 
@@ -657,12 +663,14 @@ class Visitor(NodeVisitor):
              e()
 
           for k,v in keywords:
-             self.c.LOAD_CONST(k)
              v()
 
-          assert(self.c.stack_size == ps + 1 + len(positional) + len(keywords)*2)
+          for k,v in keywords:
+             self.c.LOAD_CONST(k)
+          self.c.BUILD_TUPLE(len(keywords))
 
-          self.c.CALL_FUNCTION(len(positional),len(keywords)) 
+          assert(self.c.stack_size == ps + 2 + len(positional) + len(keywords))
+          self.c.CALL_FUNCTION_KW(len(positional),len(keywords)) 
 
           assert(ps+1 == self.c.stack_size)
 
@@ -766,7 +774,7 @@ class Visitor(NodeVisitor):
               return
 
            if not callable(children[0][0]):
-              print node.text
+              print(node.text)
               assert(False)
               exit(0)
            r = children[0][0](ref=ref)
@@ -808,7 +816,7 @@ class Visitor(NodeVisitor):
         self.c.LOAD_CONST(None)
         ps = self.c.stack_size
         if loop:
-           tgt = self.c.here()
+           tgt = self.c.curPos()
         cond()
         self.coerse()
         els = self.c.POP_JUMP_IF_FALSE()     
@@ -821,9 +829,9 @@ class Visitor(NodeVisitor):
            else:
               done = self.c.JUMP_ABSOLUTE()        
         except Exception as e:
-           print str(e)
-           print node.text
-           print "dead code"
+           print(str(e))
+           print(node.text)
+           print("dead code")
         els()
         #else code
         if el_code:
@@ -831,9 +839,9 @@ class Visitor(NodeVisitor):
         if done:
            done()
         if(ps!=self.c.stack_size):
-           print ps
-           print self.c.stack_size
-           print node.text
+           print(ps)
+           print(self.c.stack_size)
+           print(node.text)
            assert(False)
            exit(0)
 
@@ -982,11 +990,11 @@ class Visitor(NodeVisitor):
         self.c.POP_TOP()
 
     def gen_loop(self,var,iter_obj,stmts,rtrue=True):
-        print "before for ss: " + str(self.c.stack_size)
+        print("before for ss: " + str(self.c.stack_size))
         self.c.LOAD_GLOBAL('PushVars')
         self.c.LOAD_CONST(var)
         self.c.BUILD_LIST(1)
-        self.c.CALL_FUNCTION(1,0)
+        self.c.CALL_FUNCTION(1)
         self.c.POP_TOP()
 
 
@@ -996,7 +1004,7 @@ class Visitor(NodeVisitor):
         self.c.GET_ITER()
         #self.pprint("IterObj: ")        
 
-        loop = self.c.here()
+        loop = self.c.curPos()
 
         fwd = self.c.FOR_ITER()
         #self.pprint("Iter: ")        
@@ -1029,7 +1037,7 @@ class Visitor(NodeVisitor):
         self.c.LOAD_GLOBAL('PopVars')
         self.c.LOAD_CONST(var)
         self.c.BUILD_LIST(1)
-        self.c.CALL_FUNCTION(1,0)
+        self.c.CALL_FUNCTION(1)
         self.c.POP_TOP()    
         #self.pprint("on exit3")
 
@@ -1062,7 +1070,7 @@ class Visitor(NodeVisitor):
                if t == "sqg":
                   self.c.LOAD_GLOBAL("setsqg")
                   self.c.ROT_THREE()
-                  self.c.CALL_FUNCTION(2,0)
+                  self.c.CALL_FUNCTION(2)
                   self.c.POP_TOP()
                else:
                   #stack: rhs,rhs,obj,label
@@ -1083,22 +1091,23 @@ class Visitor(NodeVisitor):
         def gen(node=node,children=children):
            try:
               children[0]()
-           except Exception as e:
-              print str(e)
-              print traceback.format_exc(e)
-              print node.text
-              print "possible dead code"
+           except AssertionError as e:
+              print(str(e))
+              print(traceback.format_exc(limit=5))
+              print(node.text)
+              print("possible dead code")
            if children[2]:
               children[2][0]()
         return gen
 
     def pprint(self,t):
        self.c.LOAD_CONST(t)
-       self.c.PRINT_ITEM()
+       self.c.PRINT_EXPR()
      
        self.c.DUP_TOP()
-       self.c.PRINT_ITEM()
-       self.c.PRINT_NEWLINE()
+       self.c.PRINT_EXPR()
+       self.c.LOAD_CONST("\n")
+       self.c.PRINT_EXPR()
 
     def prolog(self):
        self.c.LOAD_GLOBAL('skill')
@@ -1125,7 +1134,7 @@ class Visitor(NodeVisitor):
     def pop_lambda(self):
        self.c.RETURN_VALUE()
        name = self.c.co_name
-       f = new.function(self.c.code(),globals())
+       f = types.FunctionType(self.c.code(),globals())
        dis(self.c.code())
        #exit(0);
        self.code_stack = self.code_stack[:-1]
@@ -1169,7 +1178,7 @@ class Visitor(NodeVisitor):
            for e in self.locals[-1]:
               self.c.LOAD_CONST(e)
            self.c.BUILD_LIST(len(self.locals[-1]))
-           self.c.CALL_FUNCTION(1,0)
+           self.c.CALL_FUNCTION(1)
            self.c.POP_TOP()
         
            #load arguments
@@ -1202,7 +1211,7 @@ class Visitor(NodeVisitor):
 
            self.c.RETURN_VALUE()
 
-           f = new.function(self.c.code(),globals())
+           f = types.FunctionType(self.c.code(),globals())
            skill.procedures[proc] = f
            skill.iprocs[proc] = f.__code__
            self.code_stack = self.code_stack[:-1]
@@ -1242,7 +1251,7 @@ else return(fibonacci(n-1) + fibonacci(n-2))
 )
 """
 
-skill = new.module("skill")
+skill = types.ModuleType("skill")
 skill.procedures = {}
 skill.iprocs = {}
 skill.variables = {}
@@ -1254,7 +1263,7 @@ grammar = Grammar(grammar)
 def update_grammar():
    grammar['func_name'].members = [Literal(x) for x in sorted(skill.procedures.keys(),key=lambda x: -len(x))]
 
-def run(s,filename,code=False):
+def run(s,filename="eval",code=False):
    global iv
    breaks = []
    for m in re.finditer(r'\n', s):
@@ -1273,8 +1282,8 @@ def run(s,filename,code=False):
 
    o = iv.visit(g)
    #Check if there are statements to perform
-   r = new.function(iv.c.code(),globals())()
-   print r
+   r = types.FunctionType(iv.c.code(),globals())()
+   print(r)
    return r
 
 def load(f):
@@ -1328,11 +1337,10 @@ def layout(cell,extra_params=None):
       for t in extra_params:
          context.params[t[0]] = props.Property(t[0],t[2],t[1])
 
-   print "inst params: " + str(context.params)
+   print("inst params: " + str(context.params))
 
-
-   p = json.dumps(context.params.items())
-   h = hashlib.md5(p).hexdigest()
+   p = json.dumps(context.params)
+   h = hashlib.md5(p.encode('UTF-8')).hexdigest()
    cell_name = current_cell['cell_name'] + "@" + h[:10]
    
    if cell_name in cell_lib:
@@ -1341,9 +1349,9 @@ def layout(cell,extra_params=None):
    runtime.push_cell(cell_name)
 
 #   print skill.procedures[current_cell['func']]({'parameters' : context.params, 'lib' : {'name' : skill.variables['cdfgData']['id']['lib']['name']} , 'cell' : {'name' : skill.variables['cdfgData']['id']['cell']['name']}} )
-   print skill.procedures[current_cell['func']]({'parameters' : context.params, 
+   print(skill.procedures[current_cell['func']]({'parameters' : context.params, 
                  'lib' : props.Property('lib','foo','string'),
-                 'cell' : props.Property('cell','bar','string')} )
+                 'cell' : props.Property('cell','bar','string')} ))
 
    context.pop()
    cell_lib[cell_name] = runtime.pop_cell()
@@ -1354,17 +1362,18 @@ def init(layermap):
 
 def cload(code,version):
    compiled = code.split(".")[0] + ".ilc"
-   h = hashlib.md5(open(code).read()).hexdigest()
+   h = hashlib.md5(open(code).read().encode('UTF-8')).hexdigest()
    try:
-      p = pickle.load( open( compiled, "rb" ) )
+      p = pickle.load( open( compiled, "rb" ))
       assert(p['version'] == version)
       assert(p['code'] == code)
       assert(p['hash'] == h)
       #interp.skill.iprocs = p['functions']
-      for k,v in p['functions'].iteritems():
-          skill.procedures[k] = new.function(v,globals())
+      for k,v in p['functions'].items():
+          skill.procedures[k] = types.FunctionType(v,globals())
    except Exception as e:
-      print "Compiling: " + code
+      print(e)
+      print("Compiling: " + code)
       skill.iprocs = {} #clear already loaded functions
       load(code)
       p = { 'version' : version, 'code' : code, 'hash' : h, 'functions' : skill.iprocs}
@@ -1390,7 +1399,7 @@ def load_props(props):
    runtime.load_props(props)
 
 def apply_params():
-   for k,v in context.bag.iteritems():
+   for k,v in context.bag.items():
       if isinstance(v,props.StringProperty) or isinstance(v,props.BooleanProperty) or isinstance(v,props.FloatProperty) or isinstance(v,props.IntProperty) or isinstance(v,props.ListProperty):
          if 'value' in v:
             context.params[k] = props.Property(k,v['value'],v['valueType'])
@@ -1403,7 +1412,7 @@ def cdfg_init(library,cell_name):
 def loadcell(cell):
    global current_cell
    #load defaults into interpreter
-   print "cd: " + str(cell_defs.keys())
+   print("cd: " + str(cell_defs.keys()))
    current_cell = cell_defs[cell]
    context.params = {}
    load_defaults(current_cell['defaults'])

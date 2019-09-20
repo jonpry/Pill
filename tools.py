@@ -25,7 +25,27 @@ class SkillTable(dict):
           return self.default
        return dict.__getitem__(self,key)
 
-class Lazy(object):
+# create proxies for wrapped object's double-underscore attributes
+class LazyMeta(type):
+    def __init__(cls, name, bases, dct):
+       def make_proxy(name):
+            def proxy(self, *args):
+                print("proxy: " + name)
+                if not self.obj:
+                   self.obj = self.ev(self.expr)
+                return getattr(self.obj, name)
+            return proxy
+
+       type.__init__(cls, name, bases, dct)
+       ignore = set("__%s__" % n for n in cls.__ignore__.split())
+       for name in dir(int) + dir(str) + dir(dict) + dir(list):
+           if name.startswith("__"):
+               if name not in ignore and name not in dct:
+                   print(name)
+                   setattr(cls, name, property(make_proxy(name)))
+
+
+class Lazy(object,metaclass=LazyMeta):
     __ignore__ = "class mro new init setattr getattr getattribute ne cmp eq"
 
     def __init__(self, s,ev): 
@@ -41,7 +61,7 @@ class Lazy(object):
          if isinstance(b,Lazy):
             if self.expr == b.expr:
                return False
-         if isinstance(b,basestring):
+         if isinstance(b,str):
             if self.expr == b:
                return False        
          if isinstance(b,Lazy):
@@ -58,7 +78,7 @@ class Lazy(object):
          if isinstance(b,Lazy):
             if self.expr == b.expr:
                return True
-         if isinstance(b,basestring):
+         if isinstance(b,str):
             if self.expr == b:
                return True         
          if isinstance(b,Lazy):
@@ -75,7 +95,7 @@ class Lazy(object):
          if isinstance(b,Lazy):
             if self.expr == b.expr:
                return 0
-         if isinstance(b,basestring):
+         if isinstance(b,str):
             if self.expr == b:
                return 0        
          self.deref()
@@ -86,31 +106,10 @@ class Lazy(object):
 
     # provide proxy access to regular attributes of wrapped object
     def __getattr__(self, name):
-        print "lcall: " + name
+        print("lcall: " + name)
         if not self.obj:
            self.obj = self.ev(self.expr)
         return getattr(self.obj, name)
-
-
-    # create proxies for wrapped object's double-underscore attributes
-    class __metaclass__(type):
-        def __init__(cls, name, bases, dct):
-
-            def make_proxy(name):
-                def proxy(self, *args):
-                    print "proxy: " + name
-                    if not self.obj:
-                       self.obj = self.ev(self.expr)
-                    return getattr(self.obj, name)
-                return proxy
-
-            type.__init__(cls, name, bases, dct)
-            ignore = set("__%s__" % n for n in cls.__ignore__.split())
-            for name in dir(int) + dir(basestring) + dir(dict) + dir(list):
-                if name.startswith("__"):
-                    if name not in ignore and name not in dct:
-                        #print name
-                        setattr(cls, name, property(make_proxy(name)))
 
 class SkillList(object):
     __ignore__ = "class mro new init setattr getattr getattribute"
@@ -121,7 +120,7 @@ class SkillList(object):
          
     # provide proxy access to regular attributes of wrapped object
     def __getattr__(self, name):
-        print "lcall: " + name
+        print("lcall: " + name)
         return getattr(self.obj, name)
 
     # create proxies for wrapped object's double-underscore attributes
@@ -130,7 +129,7 @@ class SkillList(object):
 
             def make_proxy(name):
                 def proxy(self, *args):
-                    print "lproxy: " + name
+                    print("lproxy: " + name)
                     if self.singular:
                         return getattr(self.obj[0], name)                        
                     return getattr(self.obj, name)
@@ -138,7 +137,7 @@ class SkillList(object):
 
             type.__init__(cls, name, bases, dct)
             ignore = set("__%s__" % n for n in cls.__ignore__.split())
-            for name in dir(int) + dir(float) + dir(basestring) + dir(dict) + dir(list):
+            for name in dir(int) + dir(float) + dir(str) + dir(dict) + dir(list):
                 if name.startswith("__"):
                     if name not in ignore and name not in dct:
                         #print name

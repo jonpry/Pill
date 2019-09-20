@@ -1,8 +1,10 @@
 from array import array
 from dis import *
 from types import CodeType
-from peak.util.symbols import Symbol
-from peak.util.decorators import decorate_assignment, decorate
+from bytecode import Bytecode, Instr, Compare, SetLineno
+import bytecode
+import uuid
+#from .symbol import Symbol
 import sys
 
 __all__ = [
@@ -19,6 +21,9 @@ for op in range(256):
     if name.startswith('<'): continue
     if name.endswith('+0'): opcode[name[:-2]]=op
     opcode[name]=op
+
+print(opname)
+print(opcode)
 
 globals().update(opcode) # opcodes are now importable at will
 
@@ -37,402 +42,8 @@ CO_FUTURE_WITH_STATEMENT  = 0x8000      # Python 2.5+ only
 
 __all__.extend([k for k in globals().keys() if k.startswith('CO_')])
 
-
-
-to_code = lambda x: x.tostring()
-
-try:
-    from new import code as NEW_CODE, function
-except ImportError:
-    from types import FunctionType as function
-    NEW_CODE = lambda ac, *args: CodeType(ac, 0, *args)
-    long = ord = int
-    unicode = basestring = str
-    def to_code(x):
-        global to_code
-        if not hasattr(x, 'tobytes'):
-            to_code = lambda x: x.tostring()
-        else:
-            to_code = lambda x: x.tostring()
-        return to_code(x)
-
-    CODE, GLOBALS, DEFAULTS, CLOSURE, FUNC  = (
-        '__code__', '__globals__', '__defaults__', '__closure__', '__func__'
-    )
-else:
-    CODE, GLOBALS, DEFAULTS, CLOSURE, FUNC  = (
-        'func_code', 'func_globals', 'func_defaults', 'func_closure', 'im_func'
-    )
-    ord = ord
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-class Const(object):
-    """Wrapper to ensure constants are hashable even if mutable"""
-
-    __slots__ = 'value', 'hash', 'hashable'
-    def __init__(self, value):
-        self.value = value
-        try:
-            self.hash = hash(value)
-        except TypeError:
-            self.hash = hash(id(value))
-            self.hashable = False
-        else:
-            self.hashable = True
-
-    def __repr__(self):
-        return "Const(%s)" % repr(self.value)
-
-    def __hash__(self):
-        return self.hash
-
-    def __eq__(self, other):
-        if type(other) is not Const:
-            return False
-        if self.hashable:
-            return self.value == other.value
-        else:
-            return self.value is other.value
-
-    def __ne__(self, other):
-        return not self==other
-
-    def __call__(self, code):
-        code.LOAD_CONST(self.value)
-
-
-
-
-
-
-
-
-class Node(tuple):
-    """Base class for AST nodes"""
-    __slots__ = []
-    __hash__ = tuple.__hash__
-
-def nodetype(*mixins, **kw):
-
-    def callback(frame, name, func, old_locals):
-        def __new__(cls, *args, **kw):
-            result = func(*args, **kw)
-            if type(result) is tuple:
-                return tuple.__new__(cls, (cls,)+result)
-            else:
-                return result
-
-        def __repr__(self):
-            r = self.__class__.__name__ + tuple.__repr__(self[1:])
-            if len(self)==2: return r[:-2]+')'  # nix trailing ','
-            return r
-
-        def __call__(self, code):
-            return func(*(self[1:]+(code,)))
-
-        import inspect
-        args = inspect.getargspec(func)[0]
-
-        d = dict(
-            __new__ = __new__, __repr__ = __repr__, __doc__=func.__doc__,
-            __module__ = func.__module__, __args__ = args, __slots__ = [],
-            __call__ = __call__
-        )
-        for p,a in enumerate(args[:-1]):    # skip 'code' argument
-            if isinstance(a,str):
-                d[a] = property(lambda self, p=p+1: self[p])
-
-        d.update(kw)
-        return type(name, mixins+(Node,), d)
-
-    return decorate_assignment(callback)
-
-
-nodetype()
-def Global(name, code=None):
-    if code is None:
-        return name,
-    code.LOAD_GLOBAL(name)
-
-nodetype()
-def Local(name, code=None):
-    if code is None:
-        return name,
-    if name in code.co_cellvars or name in code.co_freevars:
-        return code.LOAD_DEREF(name)
-    elif code.co_flags & CO_OPTIMIZED:
-        return code.LOAD_FAST(name)
-    else:
-        return code.LOAD_NAME(name)
-
-nodetype()
-def Return(value=None, code=None):
-    if code is None:
-        return value,
-    return code(value, Code.RETURN_VALUE)
-
-class _Pass(Symbol):
-    def __call__(self, code=None):
-        pass
-    def __nonzero__(self):
-        return False
-Pass = _Pass('Pass', __name__)
-
-nodetype()
-def Getattr(ob, name, code=None):
-    try:
-        name = const_value(name)
-    except NotAConstant:
-        return Call(Const(getattr), [ob, name])
-    if code is None:
-        return fold_args(Getattr, ob, name)
-    code(ob)
-    code.LOAD_ATTR(name)
-
-nodetype()
-def Call(func, args=(),kwargs=(), star=None,dstar=None, fold=True, code=None):
-    if code is None:
-        data = (
-            func, tuple(args), tuple(kwargs), star or (), dstar or (), fold
-        )
-        if fold and (args or kwargs or star or dstar):
-            return fold_args(Call, *data)
-        else:
-            return data
-
-    code(func, *args)
-    for k,v in kwargs:
-        code(k,v)
-
-    argc = len(args)
-    kwargc = len(kwargs)
-
-    if star:
-        if dstar:
-            code(star, dstar)
-            return code.CALL_FUNCTION_VAR_KW(argc, kwargc)
-        else:
-            code(star)
-            return code.CALL_FUNCTION_VAR(argc, kwargc)
-    else:
-        if dstar:
-            code(dstar)
-            return code.CALL_FUNCTION_KW(argc, kwargc)
-        else:
-            return code.CALL_FUNCTION(argc, kwargc)
-
-
-
-
-
-
-
-
-
-
-nodetype()
-def TryExcept(body, handlers, else_=Pass, code=None):
-    if code is None:
-        return body, tuple(handlers), else_
-    okay = Label()
-    done = Label()
-    code(okay.SETUP_EXCEPT, body, okay.POP_BLOCK)
-    if 'POP_EXCEPT' in opcode:
-        code.stack_size += 3
-    for typ, handler in handlers:
-        next_test = Label()
-        Compare(Code.DUP_TOP, [('exception match', typ)], code)
-        code(
-            next_test.JUMP_IF_FALSE_OR_POP,             # remove condition
-            Code.POP_TOP, Code.POP_TOP, Code.POP_TOP,   # remove exc info
-        )
-        if 'POP_EXCEPT' in opcode:
-            code(Code.POP_EXCEPT)
-        code(handler)
-        if code.stack_size is not None:
-            code(done.JUMP_FORWARD)
-        code(next_test, Code.POP_TOP)            # remove condition
-    code(Code.END_FINALLY)
-    code.stack_unknown()    # force stack level to come from end of body
-    code(okay, else_, done)
-
-nodetype()
-def Suite(body, code=None):
-    if code is None:
-        if body: return tuple(body),
-        return Pass
-    code(*body)
-
-nodetype()
-def TryFinally(body, handler, code=None):
-    if code is None:
-        return body, handler
-    code(
-        Code.SETUP_FINALLY, body, Code.POP_BLOCK, handler, Code.END_FINALLY
-    )
-
-nodetype()
-def LocalAssign(name, code=None):
-    if code is None:
-        return name,
-    if name in code.co_cellvars or name in code.co_freevars:
-        return code.STORE_DEREF(name)
-    elif code.co_flags & CO_OPTIMIZED:
-        return code.STORE_FAST(name)
-    else:
-        return code.STORE_NAME(name)
-
-
-nodetype()
-def UnpackSequence(nodes, code=None):
-    if code is None:
-        return tuple(nodes),
-    code.UNPACK_SEQUENCE(len(nodes))
-    return code(*nodes)
-
-
-nodetype()
-def For(iterable, assign, body=Pass, code=None):
-    if code is None:
-        return iterable, assign, body
-    L1, L2 = Label(), Label()
-    return code(
-        iterable, Code.GET_ITER, L1, L2.FOR_ITER, assign, body,
-        L1.JUMP_ABSOLUTE, L2
-    )
-
-
-nodetype()
-def YieldStmt(value=None, code=None):
-    if code is None:
-        return value,
-    r = code(value, Code.YIELD_VALUE)
-    if stack_effects[YIELD_VALUE][1]:
-        code.POP_TOP()
-    return r
-
-
-nodetype()
-def ListComp(body, code=None):
-    if code is None:
-        return body,
-    code._tmp_level += 1
-    try:
-        temp = '_[%r]' % code._tmp_level
-        code.BUILD_LIST(0)
-        code.DUP_TOP()
-        if sys.version<"2.4":
-            code.LOAD_ATTR('append')
-        code.STORE_FAST(temp)
-        r = code(body)
-        code.DELETE_FAST(temp)
-    finally:
-        code._tmp_level -= 1
-    return r
-
-
-nodetype()
-def LCAppend(value, code=None):
-    if code is None:
-        return value,
-    code.LOAD_FAST('_[%r]' % code._tmp_level)
-    r = code(value)
-    if sys.version<"2.4":
-        code.CALL_FUNCTION(1)
-        code.POP_TOP()
-    elif sys.version>="2.7":    # ick
-        code.LIST_APPEND(1)
-        code.POP_TOP()
-    else:
-        code.LIST_APPEND()
-    return r
-
-
-
-
-
-
-
-nodetype()
-def If(cond, then, else_=Pass, code=None):
-    if code is None:
-        return cond, then, else_
-    else_clause = Label()
-    end_if = Label()
-    code(cond, else_clause.JUMP_IF_FALSE_OR_POP, then)
-    if code.stack_size is not None:
-        end_if.JUMP_FORWARD(code)
-    code(else_clause, Code.POP_TOP, else_, end_if)
-
-nodetype()
-def Function(body, name='<lambda>', args=(), var=None, kw=None, defaults=(), code=None):
-    if code is None:
-        return body, name, ntuple(args), var, kw, tuple(defaults)
-    c = code.nested(name, args, var, kw)
-    c(body)
-    if c.stack_size is not None:
-        code.return_()
-    c = c.code(code)
-    if defaults:
-        code(*defaults)
-    if c.co_freevars:
-        frees = c.co_freevars
-        for name in frees:
-            code.LOAD_CLOSURE(name)
-        if sys.version>='2.5':
-            code.BUILD_TUPLE(len(frees))
-        code.LOAD_CONST(c)
-        return code.MAKE_CLOSURE(len(defaults), len(frees))
-    else:
-        code.LOAD_CONST(c)
-        return code.MAKE_FUNCTION(len(defaults))
-
-def ntuple(seq):
-    if isinstance(seq, basestring): return seq
-    return tuple(map(ntuple, seq))
-
-
-
-
-nodetype()
-def Compare(expr, ops, code=None):
-    if code is None:
-        return fold_args(Compare, expr, tuple(ops))
-    if len(ops)==1:
-        op, arg = ops[0]
-        code(expr, arg)
-        return code.COMPARE_OP(op)
-    fail = Label()
-    finish = Label()
-    code(expr)
-    for op, arg in ops[:-1]:
-        code(arg)
-        code.DUP_TOP()
-        code.ROT_THREE()
-        code.COMPARE_OP(op)
-        fail.JUMP_IF_FALSE_OR_POP(code)
-    op, arg = ops[-1]
-    code(arg)
-    code.COMPARE_OP(op)
-    finish.JUMP_FORWARD(code)
-    fail(code)
-    code.ROT_TWO()
-    code.POP_TOP()
-    return finish(code)
+long = ord = int
+unicode = basestring = str
 
 
 fast_to_deref = {
@@ -441,43 +52,6 @@ fast_to_deref = {
 }
 
 deref_to_deref = dict([(k,k) for k in hasfree])
-
-
-
-
-
-
-
-
-nodetype()
-def And(values, code=None):
-    if code is None:
-        return fold_args(And, tuple(values))
-    end = Label()
-    for value in values[:-1]:
-        try:
-            if const_value(value):
-                continue        # true constants can be skipped
-        except NotAConstant:    # but non-constants require code
-            code(value, end.JUMP_IF_FALSE_OR_POP)
-        else:       # and false constants end the chain right away
-            return code(value, end)
-    code(values[-1], end)
-
-nodetype()
-def Or(values, code=None):
-    if code is None:
-        return fold_args(Or, tuple(values))
-    end = Label()
-    for value in values[:-1]:
-        try:
-            if not const_value(value):
-                continue        # false constants can be skipped
-        except NotAConstant:    # but non-constants require code
-            code(value, end.JUMP_IF_TRUE_OR_POP)
-        else:       # and true constants end the chain right away
-            return code(value, end)
-    code(values[-1], end)
 
 def with_name(f, name):
     try:
@@ -492,14 +66,16 @@ def with_name(f, name):
 
 EXTRA_JUMPS = 'JUMP_IF_FALSE_OR_POP JUMP_IF_TRUE_OR_POP JUMP_IF_FALSE JUMP_IF_TRUE'.split()
 
-class Label(object):
+class Label(bytecode.Label):
     """A forward-referenceable location in a ``Code`` object"""
 
-    __slots__ = 'backpatches', 'resolution'
+    __slots__ = 'backpatches', 'resolution', 'id'
 
     def __init__(self):
+        super(Label, self).__init__()
         self.backpatches = []
         self.resolution = None
+        self.id = uuid.uuid4()
 
     def SETUP_EXCEPT(self, code):
         code.SETUP_EXCEPT(); self.backpatches.append(code.blocks[-1][-1])
@@ -531,6 +107,8 @@ class Label(object):
         for p in self.backpatches:
             if p: p()
 
+labelMap = {}
+
 class Code(object):
     co_argcount = 0
     co_stacksize = 0
@@ -546,34 +124,26 @@ class Code(object):
     _tmp_level = 0
 
     def __init__(self):
-        self.co_code = array('B')
+        self.co_code = Bytecode()
         self.co_consts = [None]
         self.co_names = []
         self.co_varnames = []
         self.co_lnotab = array('B')
-        self.emit = self.co_code.append
         self.blocks = []
         self.stack_history = []
 
     def emit_arg(self, op, arg):
-        emit = self.emit
-        if arg>0xFFFF:
-            emit(EXTENDED_ARG)
-            emit((arg>>16)&255)
-            emit((arg>>24)&255)
-        emit(op)
-        emit(arg&255)
-        emit((arg>>8)&255)
+        self.co_code.append(Instr(op,arg))
 
     def locals_written(self):
         vn = self.co_varnames
         hl = dict.fromkeys([STORE_FAST, DELETE_FAST])
         return dict.fromkeys([vn[arg] for ofs, op, arg in self if op in hl])
 
-
-
-
     def set_lineno(self, lno):
+        if(lno > 0):
+           self.co_code.append(SetLineno(lno))
+
         if not self.co_firstlineno:
             self.co_firstlineno = self._last_line = lno
             return
@@ -611,10 +181,6 @@ class Code(object):
         return self.emit(YIELD_VALUE)
 
 
-
-
-
-
     def LOAD_CONST(self, const):
         self.stackchange((0,1))
         pos = 0
@@ -636,37 +202,39 @@ class Code(object):
                     break
             pos = arg+1
             continue
-        return self.emit_arg(LOAD_CONST, arg)
+        return self.emit_arg('LOAD_CONST', const)
 
-    def CALL_FUNCTION(self, argc=0, kwargc=0, op=CALL_FUNCTION, extra=0):
-        self.stackchange((1+argc+2*kwargc+extra,1))
-        emit = self.emit
-        emit(op); emit(argc); emit(kwargc)
+    def CALL_FUNCTION(self, argc=0, foo=0, op='CALL_FUNCTION', extra=0):
+        self.stackchange((1+argc+extra,1))
+        self.emit_arg(op,argc);
 
     def CALL_FUNCTION_VAR(self, argc=0, kwargc=0):
+        assert(False)
         self.CALL_FUNCTION(argc,kwargc,CALL_FUNCTION_VAR, 1)    # 1 for *args
 
     def CALL_FUNCTION_KW(self, argc=0, kwargc=0):
-        self.CALL_FUNCTION(argc,kwargc,CALL_FUNCTION_KW, 1)     # 1 for **kw
+        self.stackchange((2+argc+kwargc,1))
+        self.emit_arg('CALL_FUNCTION_KW', argc+kwargc)
 
     def CALL_FUNCTION_VAR_KW(self, argc=0, kwargc=0):
+        assert(False)
         self.CALL_FUNCTION(argc,kwargc,CALL_FUNCTION_VAR_KW, 2) # 2 *args,**kw
 
     def BUILD_TUPLE(self, count):
         self.stackchange((count,1))
-        self.emit_arg(BUILD_TUPLE,count)
+        self.emit_arg('BUILD_TUPLE',count)
 
     def BUILD_LIST(self, count):
         self.stackchange((count,1))
-        self.emit_arg(BUILD_LIST,count)
+        self.emit_arg('BUILD_LIST',count)
 
     def UNPACK_SEQUENCE(self, count):
         self.stackchange((1,count))
-        self.emit_arg(UNPACK_SEQUENCE,count)
+        self.emit_arg('UNPACK_SEQUENCE',count)
 
     def RETURN_VALUE(self):
         self.stackchange((1,0))
-        self.emit(RETURN_VALUE)
+        self.co_code.append(Instr('RETURN_VALUE'))
         self.stack_unknown()
 
     def BUILD_SLICE(self, count):
@@ -696,6 +264,11 @@ class Code(object):
     def here(self):
         return len(self.co_code)
 
+    def curPos(self):
+        label = Label()
+        self.co_code.append(label)
+        labelMap[label.id] = len(self.co_code)
+        return label
 
     if 'UNARY_CONVERT' not in opcode:
         def UNARY_CONVERT(self):
@@ -755,6 +328,7 @@ class Code(object):
         self._ss = None
 
     def branch_stack(self, location, expected):
+        location = labelMap[location.id]
         if location >= len(self.stack_history):
             if location > len(self.co_code):
                 raise AssertionError("Forward-looking stack prediction!",
@@ -780,29 +354,9 @@ class Code(object):
 
 
     def jump(self, op, arg=None):
-        def jump_target(offset):
-            target = offset
-            #print op
-            #print hasjabs
-            if op not in hasjabs:
-                target = target - (posn+3)
-                if target<0:
-                    raise AssertionError("Relative jumps can't go backwards")
-                if True:
-                    target = offset - (posn+6)
-            return target
-
         def backpatch(offset):
-            target = jump_target(offset)
-            #if target>0xFFFF:
-            #    print hasjabs
-            #    print hasjrel
-            #    print op
-            #    print "ofs: " + hex(offset) + ", tgt: " + hex(target) + ", posn: " + hex(posn)
-                #exit(0)
-                #raise AssertionError("Forward jump span must be <64K bytes")
             assert(op!=120)
-            self.patch_arg(posn, 0x1FFFF, target,op)
+            #self.patch_arg(posn, 0x1FFFF, target,op)
             self.branch_stack(offset, old_level)
 
         if op==FOR_ITER:
@@ -813,21 +367,24 @@ class Code(object):
         self.stack_size -= (op in (JUMP_IF_TRUE_OR_POP, JUMP_IF_FALSE_OR_POP))
         posn = self.here()
         if arg is not None:
-            print "jt: " + hex(jump_target(arg))
-            self.emit_arg(op, jump_target(arg))
+            #print("jt: " + hex(jump_target(arg)))
+            self.emit_arg(opname[op], arg)
             self.branch_stack(arg, old_level)
             lbl = None
         else:
-            self.emit_arg(op, 0x1FFFF)
-            def lbl(code=None):
-                backpatch(self.here())
+            label = Label()
+            self.emit_arg(opname[op], label)
+            def lbl(code=None,label=label):
+                self.co_code.append(label)
+                labelMap[label.id] = len(self.co_code)
+                backpatch(label)
         if op in (JUMP_FORWARD, JUMP_ABSOLUTE, CONTINUE_LOOP):
             self.stack_unknown()
         return lbl
 
     def COMPARE_OP(self, op):
         self.stackchange((2,1))
-        self.emit_arg(COMPARE_OP, compares[op])
+        self.emit_arg('COMPARE_OP', compares[op])
 
     def setup_block(self, op):
         jmp = self.jump(op)
@@ -946,13 +503,13 @@ class Code(object):
     def return_(self, ob=None):
         return self(ob, Code.RETURN_VALUE)
 
-    decorate(classmethod)
+    @classmethod
     def from_function(cls, function, copy_lineno=False):
         code = cls.from_code(getattr(function, CODE), copy_lineno)
         return code
 
 
-    decorate(classmethod)
+    @classmethod
     def from_code(cls, code, copy_lineno=False):
         import inspect
         self = cls.from_spec(code.co_name, *inspect.getargs(code))
@@ -962,7 +519,7 @@ class Code(object):
         self.co_freevars = code.co_freevars     # XXX untested!
         return self
 
-    decorate(classmethod)
+    @classmethod
     def from_spec(cls, name='<lambda>', args=(), var=None, kw=None):
         self = cls()
         self.co_name = name
@@ -1081,7 +638,7 @@ class Code(object):
         code = self.co_code
         for ofs, op, arg in self:
             if op in opmap:
-                print op
+                print(op)
                 if arg in argmap:
                     self.patch_arg(ofs, arg, argmap[arg],op)
                 elif arg is not None:
@@ -1109,14 +666,13 @@ class Code(object):
         elif parent is not None and self.co_freevars:
             parent.makecells(self.co_freevars)
 
-        return NEW_CODE(
-            self.co_argcount, len(self.co_varnames),
-            self.co_stacksize, flags, to_code(self.co_code),
-            tuple(self.co_consts), tuple(self.co_names),
-            tuple(self.co_varnames),
-            self.co_filename, self.co_name, self.co_firstlineno,
-            to_code(self.co_lnotab), self.co_freevars, self.co_cellvars
-        )
+        self.co_code.argcount = self.co_argcount;
+        self.co_code.argnames = self.co_varnames[:self.co_argcount];
+        self.co_code.name = self.co_name;
+        self.co_code.filename = self.co_filename;
+        for e in self.co_code:
+          print(e)
+        return self.co_code.to_code();
 
 
 for op in hasfree:
@@ -1130,34 +686,19 @@ for op in hasfree:
             self.emit_arg(op, arg)
         setattr(Code, opname[op], with_name(do_free, opname[op]))
 
-compares = {}
-for value, name in enumerate(cmp_op):
-    compares[value] = value
-    compares[name] = value
-compares['<>'] = compares['!=']
-
+compares = { '==' : Compare.EQ, '!=' : Compare.NE, '>' : Compare.GT, '>=' : Compare.GE,
+             '<' : Compare.LT, '<=' : Compare.LE, "in" : Compare.IN}
 
 for op in hasname:
     if not hasattr(Code, opname[op]):
         def do_name(self, name, op=op):
             self.stackchange(stack_effects[op])
-            try:
-                arg = self.co_names.index(name)
-            except ValueError:
-                arg = len(self.co_names)
-                self.co_names.append(name)
-            self.emit_arg(op, arg)
+
+            self.emit_arg(opname[op], name)
             if op in (LOAD_NAME, STORE_NAME, DELETE_NAME):
                 # Can't use optimized local vars, so reset flags
                 self.co_flags &= ~CO_OPTIMIZED
         setattr(Code, opname[op], with_name(do_name, opname[op]))
-
-
-
-
-
-
-
 
 
 for op in haslocal:
@@ -1168,12 +709,7 @@ for op in haslocal:
                     "co_flags must include CO_OPTIMIZED to use fast locals"
                 )
             self.stackchange(stack_effects[op])
-            try:
-                arg = self.co_varnames.index(varname)
-            except ValueError:
-                arg = len(self.co_varnames)
-                self.co_varnames.append(varname)
-            self.emit_arg(op, arg)
+            self.emit_arg(opname[op], varname)
         setattr(Code, opname[op], with_name(do_local, opname[op]))
 
 for op in hasjrel+hasjabs:
@@ -1182,23 +718,6 @@ for op in hasjrel+hasjabs:
             self.stackchange(stack_effects[op])
             return self.jump(op, address)
         setattr(Code, opname[op], with_name(do_jump, opname[op]))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def gen_map(code, ob):
@@ -1217,28 +736,24 @@ def gen_list(code, ob):
     code(*ob)
     return code.BUILD_LIST(len(ob))
 
+def gen_const(code, ob):
+    print(code)
+    assert(False)
+
 generate_types = {
-    int:        Code.LOAD_CONST,
-    long:       Code.LOAD_CONST,
-    bool:       Code.LOAD_CONST,
-    CodeType:   Code.LOAD_CONST,
-    str:        Code.LOAD_CONST,
-    unicode:    Code.LOAD_CONST,
-    complex:    Code.LOAD_CONST,
-    float:      Code.LOAD_CONST,
-    type(None): Code.LOAD_CONST,
+    int:        gen_const,
+    long:       gen_const,
+    bool:       gen_const,
+    CodeType:   gen_const,
+    str:        gen_const,
+    unicode:    gen_const,
+    complex:    gen_const,
+    float:      gen_const,
+    type(None): gen_const,
     tuple:      gen_tuple,
     list:       gen_list,
     dict:       gen_map,
 }
-
-
-
-
-
-
-
-
 
 
 
@@ -1330,7 +845,7 @@ def dump(code):
     code = getattr(code, CODE, code)
     co_names = code.co_names
     co_consts = [repr(x) for x in code.co_consts]
-    co_varnames = code.co_varnames
+    co_varnames = code.co_argnames
     cmp_ops = cmp_op
     free = code.co_cellvars + code.co_freevars
     labels = {}
@@ -1425,8 +940,8 @@ for name in opcode:
             def do_op(self,arg,op=op,se=stack_effects[op]):
                 self.stackchange(se); self.emit_arg(op,arg)
         else:
-            def do_op(self,op=op,se=stack_effects[op]):
-                self.stackchange(se); self.emit(op)
+            def do_op(self,op=op,se=stack_effects[op],name=name):
+                self.stackchange(se); self.co_code.append(Instr(name))
 
         setattr(Code, name, with_name(do_op, name))
 

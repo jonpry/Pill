@@ -116,7 +116,39 @@ class ListProperty(list):
           return self.name
        return super(ListProperty,self).__getitem__(key)
 
-class BooleanProperty(int):
+  # create proxies for wrapped object's double-underscore attributes
+class PropMetaBool(type):
+   def __init__(cls, name, bases, dct):
+      def make_proxy(name):
+         def proxy(self, *args):
+            return getattr(self.wrapped, name)
+         return proxy
+
+      type.__init__(cls, name, bases, dct)
+      ignore = set("__%s__" % n for n in cls.__ignore__.split())
+      for name in dir(bool):
+         if name.startswith("__"):
+            if name not in ignore and name not in dct:
+               print(name)
+               setattr(cls, name, property(make_proxy(name)))
+
+class PropMetaStr(type):
+   def __init__(cls, name, bases, dct):
+      def make_proxy(name):
+         def proxy(self, *args):
+            return getattr(self.wrapped, name)
+         return proxy
+
+      type.__init__(cls, name, bases, dct)
+      ignore = set("__%s__" % n for n in cls.__ignore__.split())
+      for name in dir(str):
+         if name.startswith("__"):
+            if name not in ignore and name not in dct:
+               print(name)
+               setattr(cls, name, property(make_proxy(name)))
+
+
+class BooleanProperty(int,metaclass=PropMetaBool):
    __ignore__ = "class mro new init setattr getattr getattribute getitem hash eq"
    def __new__(cls,name,value):
        if value == "nil":
@@ -151,22 +183,6 @@ class BooleanProperty(int):
        assert(key == "value")
        self.wrapped = value
 
-   # create proxies for wrapped object's double-underscore attributes
-   class __metaclass__(type):
-      def __init__(cls, name, bases, dct):
-         def make_proxy(name):
-            def proxy(self, *args):
-               return getattr(self.wrapped, name)
-            return proxy
-
-         type.__init__(cls, name, bases, dct)
-         ignore = set("__%s__" % n for n in cls.__ignore__.split())
-         for name in dir(bool):
-            if name.startswith("__"):
-               if name not in ignore and name not in dct:
-                  print name
-                  setattr(cls, name, property(make_proxy(name)))
-
 class FloatProperty(float):
    def __new__(cls,name,value):
        return super(FloatProperty,cls).__new__(cls,value)
@@ -183,7 +199,7 @@ class FloatProperty(float):
           return "float"
        elif key == "name":
           return self.name
-       print key
+       print(key)
        assert(False) 
 
 class IntProperty(int):
@@ -204,7 +220,7 @@ class IntProperty(int):
           return self.name
        assert(False) 
 
-class StringProperty(str):
+class StringProperty(str,metaclass=PropMetaStr):
    __ignore__ = "class mro new init setattr getattr getattribute getitem hash eq"
 
    def __new__(cls,name,value):
@@ -230,27 +246,12 @@ class StringProperty(str):
           return "string"
        elif key == "name":
           return self.name
+       print(self.wrapped)
        return self.wrapped.__getitem__(key)
 
    def __setitem__(self,key,value):
        assert(key == "value")
        self.wrapped = value
-
-   # create proxies for wrapped object's double-underscore attributes
-   class __metaclass__(type):
-      def __init__(cls, name, bases, dct):
-         def make_proxy(name):
-            def proxy(self, *args):
-               return getattr(self.wrapped, name)
-            return proxy
-
-         type.__init__(cls, name, bases, dct)
-         ignore = set("__%s__" % n for n in cls.__ignore__.split())
-         for name in dir(str):
-            if name.startswith("__"):
-               if name not in ignore and name not in dct:
-                  print name
-                  setattr(cls, name, property(make_proxy(name)))
 
 
 def Property(name,value,t):
@@ -269,7 +270,7 @@ def Property(name,value,t):
     if t == "cyclic" or t == "radio":
        return StringProperty(name,value)
 
-    print "t: " + t
+    print("t: " + t)
     assert(False)
 
 class PropertyDict(dict):
@@ -311,8 +312,8 @@ def load_props(file_name):
         o['value'] = float(o['value'])
       retd[o['name']] = Property(o['name'],o['value'],t)
       if o['value'] == "valueType":
-        print o
-        print e
+        print(o)
+        print(e)
    return { 'props' : retd, 'cbs' : cbs}
      
 #print load_props()

@@ -5,9 +5,10 @@
   The process of importing PDK codes and then validating the results is tedious. At this time, Pill is more of a tool to help you create a working Klayout-based PDK than an out-of-the-box solution to import. 
   
 ## Requirements
-- Python 2.7
-- Klayout built with Python 2.7 
+- Python 3.7+
+- Klayout built with Python 3.7+
 - Parsimonious
+- Python bytecode package, eg. pip3 install bytecode
 - G++
    
 ## Getting started
