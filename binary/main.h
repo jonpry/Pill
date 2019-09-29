@@ -81,6 +81,7 @@ class SList {
       m_funccall=false;
       m_forceparen=false;
       m_ofst = ofst;
+      m_escape=true;
       m_tgt = 0;
       if(slist){
          m_list = *slist;  
@@ -106,9 +107,12 @@ class SList {
 
    void print(set<SList*> *stack=0){
      printed.insert(this);
-     if(m_atom.size())
-        print_token(escape(m_atom),this);
-     else
+     if(m_atom.size()){
+        if(m_escape)
+           print_token(escape(m_atom),this);
+        else
+           print_token(m_atom,this);
+     }else
         print_token(" ",this);
      if(m_list.size() || m_forceparen)
         print_token("(",this,m_noparen);
@@ -138,7 +142,7 @@ class SList {
 
    uint64_t m_ofst, m_tgt;
    string m_atom;
-   bool m_forcebreak, m_noparen, m_funccall, m_forceparen;
+   bool m_forcebreak, m_noparen, m_funccall, m_forceparen, m_escape;
    vector<SList*> m_list;
    map<string,SList*> m_map;
 };

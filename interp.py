@@ -63,8 +63,8 @@ grammar = r"""
      identifier  = !((reserved ) (ws/RPAR/EQU/PLUS/MINUS/RBR/BANG/TILDA/LT/GT/DOT/LPAR)) ~r"[a-zA-Z_][a-zA-Z_0-9\?]*"
      reserved    = IF / ELSE / THEN / FOR / PROCEDURE / WHEN / LET / UNLESS / CASE / NIL / FOREACH / SETOF / EXISTS / TAU / RETURN / COND / WHILE / OPTIONAL / PROG
      list        = LPAR (listelem ws?)* RPAR
-     keyword_func= LPAR func_name ws? ((Q identifier ws?)? ororexpr ws?)+ RPAR
-     func_call2  = func_name LPAR ws? ((Q identifier ws?)? ororexpr ws?)+ RPAR
+     keyword_func= LPAR func_name ws? ((Q identifier ws?)? tuple ws?)+ RPAR
+     func_call2  = func_name LPAR ws? ((Q identifier ws?)? tuple ws?)+ RPAR
  
      func_name   = "fixp" / "bar" / "bam"
      listelem    = assign/list  
@@ -677,10 +677,12 @@ class Visitor(NodeVisitor):
        return gen
 
     def visit_keyword_func(self,node,children):
+       print("visit keyword_func: " + str(children[0]()))
        return self.kwfunc(1,node,children)
 
     def visit_func_call2(self,node,children):
        #func_call2  = identifier LPAR ws? (Q identifier ws? (ororexpr/list) ws?)+ RPAR
+       print("visit func call 2: " + str(children[0]()))
        return self.kwfunc(0,node,children)
 
     def visit_proglet(self,node,children):
@@ -1277,13 +1279,12 @@ def run(s,filename="eval",code=False):
       g =  grammar.parse(s)#e)
       iv = Visitor(breaks,False,filename)
 
-   #if not code:
-   #   print g
-
    o = iv.visit(g)
    #Check if there are statements to perform
    r = types.FunctionType(iv.c.code(),globals())()
-   print(r)
+   #print(r)
+   #exit(0)
+
    return r
 
 def load(f):

@@ -41,7 +41,7 @@ class LazyMeta(type):
        for name in dir(int) + dir(str) + dir(dict) + dir(list):
            if name.startswith("__"):
                if name not in ignore and name not in dct:
-                   print(name)
+                   #print(name)
                    setattr(cls, name, property(make_proxy(name)))
 
 

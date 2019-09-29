@@ -432,6 +432,14 @@ SList* consume_u32(uint32_t *pos, int32_t *b, uint8_t *buf){
    return new SList(0,"0x" + to_hex(aloc));
 }
 
+SList* consume_s32(uint32_t *pos, int32_t *b, uint8_t *buf){
+   int32_t aloc = __bswap_32(*(int32_t*)&buf[*pos]);
+   *pos+=4;
+   *b-=4;
+   SList* ret=new SList(0,to_string(aloc));
+   ret->m_escape=false;
+   return ret;
+}
 
 SList* consume_byte(uint32_t *pos, int32_t *b, uint8_t *buf){
    *pos+=1;
@@ -445,6 +453,7 @@ map<int,string> fig_type_map = {
                       {6, "polygon"}, 
                       {7, "line"}, 
                       {8, "path"}, 
+                      {0xa, "label"}, //TODO: Maybe pin or something
                       {0xb, "ellipse"}, 
                       {0xc, "donut"}, 
                       {0xd, "mosaic"}, 
@@ -647,8 +656,8 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             esz=0;
             args.push_back(consume_u32(&pos,&b,buf));
             args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_u32(&pos,&b,buf));
-            args.push_back(consume_u32(&pos,&b,buf));
+            args.push_back(consume_s32(&pos,&b,buf));
+            args.push_back(consume_s32(&pos,&b,buf));
             args.push_back(consume_u32(&pos,&b,buf));
 
             new SList(rel_pos,"label",&args);
@@ -669,8 +678,11 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             pos+=4;
             b-=4;
             for(uint32_t j=0; j < cnt; j++){
-               args.push_back(consume_u32(&pos,&b,buf));
-               args.push_back(consume_u32(&pos,&b,buf));
+               vector<SList*> pargs;
+               pargs.push_back(consume_s32(&pos,&b,buf));
+               pargs.push_back(consume_s32(&pos,&b,buf));
+               args.push_back(new SList(0,"",&pargs));
+
             }
             new SList(rel_pos,"polygon",&args);
         }else if(type==71){ //zeLine
@@ -761,17 +773,24 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
 //0000: 59 0A FC E6 00 00 05 0A 59 00 01 00 2D 59 05 FC 09 00 00 00 1B **58 00 00 05 
 
             if(ftype==5 || ftype == 0x22 || ftype==0x1a || ftype==0xb || ftype==0x23 || ftype==0x25){
+               vector<SList*> rargs;
                for(uint32_t j=0; j < 4; j++){
-                  args.push_back(consume_u32(&pos,&b,buf));
-               }
-               args.push_back(consume_pointer(&pos,&b,buf,true));
+                  rargs.push_back(consume_s32(&pos,&b,buf));
+               } 
+               args.push_back(new SList(0,"bbox",&rargs));
+               consume_pointer(&pos,&b,buf,true); //TODO: LP
             }else if(ftype==9 || ftype==0x21 || ftype==0xd){
                for(uint32_t j=0; j < 6; j++){
                   args.push_back(consume_u32(&pos,&b,buf));
                }
             }else{
                args.push_back(consume_pointer(&pos,&b,buf,true));
-               args.push_back(consume_pointer(&pos,&b,buf,true));
+               consume_pointer(&pos,&b,buf,true); //TODO: self and linked list stuff
+            }
+
+            if(fig_type_map.find(ftype) == fig_type_map.end()){
+               printf("Unknown fig_type %d\n", ftype);
+               exit(0);
             }
 
             new SList(rel_pos,"fig_" + fig_type_map[ftype],&args);
@@ -808,7 +827,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             args.push_back(consume_pointer(&pos,&b,buf));
             args.push_back(consume_pointer(&pos,&b,buf));
             args.push_back(consume_pointer(&pos,&b,buf));
-            args.push_back(consume_pointer(&pos,&b,buf));
+            consume_pointer(&pos,&b,buf);
 
 
             args.push_back(consume_u32(&pos,&b,buf));
@@ -848,8 +867,8 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             esz=0;
             args.push_back(consume_u32(&pos,&b,buf));
             args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_u32(&pos,&b,buf));
-            args.push_back(consume_u32(&pos,&b,buf));
+            args.push_back(consume_s32(&pos,&b,buf));
+            args.push_back(consume_s32(&pos,&b,buf));
             args.push_back(consume_u32(&pos,&b,buf));
             args.push_back(consume_u32(&pos,&b,buf));
 
@@ -1000,6 +1019,30 @@ void to_parent(string a, SList *l){
       if(*it)
         to_parent(a,*it);
    }
+}
+
+void proc_fig(SList *root){
+   root->m_atom = root->m_list[2]->m_atom;
+   root->m_list = root->m_list[2]->m_list;
+
+   if(root->m_atom == "bbox"){
+       root->m_atom = string("dbCreateRect(nil list(\"PM\" \"drawing\") list(") + 
+                      root->m_list[0]->m_atom + ":" + root->m_list[1]->m_atom + " " + 
+                      root->m_list[2]->m_atom + ":" + root->m_list[3]->m_atom + "))";
+       root->m_escape=false;
+       root->m_list.clear();
+   }
+
+   if(root->m_atom == "polygon"){
+       root->m_atom = string("dbCreatePolygon(nil list(\"PM\" \"drawing\") list("); 
+       for(auto it=root->m_list.begin(); it!=root->m_list.end(); it++){
+             root->m_atom += (*it)->m_list[0]->m_atom + ":" + (*it)->m_list[1]->m_atom + " ";
+       }
+       root->m_atom += "))";
+       root->m_escape=false;
+       root->m_list.clear();
+   }
+
 }
 
 void proc_skill(SList *root, string prop_name=""){
@@ -1308,6 +1351,7 @@ if(argc<3 || i==atoi(argv[2])){
       }
    }
 #endif
+   printf("groups begin\n");
    for(auto it=groups.begin(); it!=groups.end(); it++){
 //       proc_skill(*it);
          set<SList*> parents;
@@ -1325,11 +1369,15 @@ if(argc<3 || i==atoi(argv[2])){
       if(consumed.find((*it)->m_ofst) != consumed.end())
          continue;
 
-         set<SList*> parents;
-         print_reset(0);
-         parents.clear();
-         (*it)->print(&parents);
-         printf("\n");
+       if((*it)->m_atom.rfind("fig_",0)==0){
+          proc_fig(*it);
+       }
+
+       set<SList*> parents;
+       print_reset(0);
+       parents.clear();
+       (*it)->print(&parents);
+       printf("\n");
    }
 
 #endif

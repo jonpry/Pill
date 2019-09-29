@@ -462,6 +462,16 @@ def rodCreatePolygon(name,layer,fromObj=None):
    rodsByName[name] = obj
    return obj
 
+def dbCreatePolygon(cv,layer,pts):
+   print("dbCreatePolygon: \"" + str(cv) + "\", " + str(layer))
+   l1 = maplayer(layer)
+   assert(l1 >= 0)  
+   dpts = []
+   for p in pts:
+      dpts.append(db.DPoint.new(p[0],p[1]))  
+   r = db.DPolygon.new(dpts)
+   r = top.shapes(l1).insert(r)
+
 def rodAssignHandleToParameter(**kwargs):
    print("assignHandle: " + str(kwargs))
    return None
@@ -822,7 +832,7 @@ def run(layermap_file,s,r,l):
    skill.procedures['dbFindTermByName'] = nullfunc
    skill.procedures['dbCreateTerm'] = nullfunc
    skill.procedures['dbCreatePin'] = nullfunc
-   skill.procedures['dbCreatePolygon'] = nullfunc
+   skill.procedures['dbCreatePolygon'] = dbCreatePolygon
    skill.procedures['dbDeleteObject'] = nullfunc
 
 def load_props(props_file):

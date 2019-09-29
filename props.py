@@ -129,7 +129,7 @@ class PropMetaBool(type):
       for name in dir(bool):
          if name.startswith("__"):
             if name not in ignore and name not in dct:
-               print(name)
+               #print(name)
                setattr(cls, name, property(make_proxy(name)))
 
 class PropMetaStr(type):
@@ -144,7 +144,7 @@ class PropMetaStr(type):
       for name in dir(str):
          if name.startswith("__"):
             if name not in ignore and name not in dct:
-               print(name)
+               #print(name)
                setattr(cls, name, property(make_proxy(name)))
 
 
