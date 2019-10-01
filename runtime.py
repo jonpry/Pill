@@ -205,7 +205,7 @@ def maplayer(layer):
       layer = [layer, "drawing"]
 
    if isinstance(layer[0],int):
-      return layout.layer(int(layer[0]),0) #TODO: handle purpose
+      return layout.layer(int(layer[0]),int(layer[1])) #TODO: handle purpose
 
    if (layer[0],layer[1]) in layermap:
       l1 = layermap[ (layer[0],layer[1]) ]
@@ -535,7 +535,7 @@ def snapToGrid(v,g):
    return ret
 
 #dbCreateLabel(cv 4 1:1 "myLabel" "centerLeft" "R0" "roman" 2)
-def dbCreateLabel(cell,layer,origin,text,justification,orientation,font,height):
+def dbCreateLabel(cell,layer,origin,text,justification=None,orientation=None,font=None,height=1):
    l1 = maplayer(layer)
    t = db.DText.new(text,origin[0],origin[1])
    t.size = height

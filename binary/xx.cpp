@@ -441,9 +441,11 @@ SList* consume_s32(uint32_t *pos, int32_t *b, uint8_t *buf){
    return ret;
 }
 
-SList* consume_byte(uint32_t *pos, int32_t *b, uint8_t *buf){
+SList* consume_byte(uint32_t *pos, int32_t *b, uint8_t *buf, bool decimal=false){
    *pos+=1;
    *b-=1;
+   if(decimal)
+       return new SList(0,to_string(buf[*pos-1]));
    return new SList(0,string("byte_") + to_string(buf[*pos-1]));
 }
 
@@ -646,8 +648,11 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             esz=0;
             args.push_back(consume_byte(&pos,&b,buf));
             args.push_back(consume_byte(&pos,&b,buf));
-            args.push_back(consume_u32(&pos,&b,buf));
-            args.push_back(consume_pointer(&pos,&b,buf));
+            args.push_back(consume_byte(&pos,&b,buf));
+            args.push_back(consume_byte(&pos,&b,buf,true));
+            args.push_back(consume_byte(&pos,&b,buf,true)); //purpose
+            args.push_back(consume_byte(&pos,&b,buf,true)); //layer
+            consume_pointer(&pos,&b,buf); //Linked list
             args.push_back(consume_u32(&pos,&b,buf));
 
             new SList(rel_pos,"LP",&args);
@@ -762,11 +767,9 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             uint8_t ftype = buf[pos];
             pos++;
             b--;
-            args.push_back(consume_byte(&pos,&b,buf));
-            uint8_t flen = buf[pos];
-            pos++;
-            b--;
-            args.push_back(consume_byte(&pos,&b,buf));
+            args.push_back(consume_byte(&pos,&b,buf,true));
+            args.push_back(consume_byte(&pos,&b,buf,true));
+            args.push_back(consume_byte(&pos,&b,buf,true));
 
             printf("FIG %x\n", ftype);
 
@@ -870,7 +873,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             args.push_back(consume_s32(&pos,&b,buf));
             args.push_back(consume_s32(&pos,&b,buf));
             args.push_back(consume_u32(&pos,&b,buf));
-            args.push_back(consume_u32(&pos,&b,buf));
+            args.push_back(consume_s32(&pos,&b,buf));
 
             args.push_back(consume_byte(&pos,&b,buf));
             uint8_t ftype = buf[pos];
@@ -1022,11 +1025,13 @@ void to_parent(string a, SList *l){
 }
 
 void proc_fig(SList *root){
-   root->m_atom = root->m_list[2]->m_atom;
-   root->m_list = root->m_list[2]->m_list;
+   string purpose = root->m_list[1]->m_atom;
+   string layer = root->m_list[0]->m_atom;
+   root->m_atom = root->m_list[3]->m_atom;
+   root->m_list = root->m_list[3]->m_list;
 
    if(root->m_atom == "bbox"){
-       root->m_atom = string("dbCreateRect(nil list(\"PM\" \"drawing\") list(") + 
+       root->m_atom = string("dbCreateRect(nil list(" + purpose + " " + layer + ") list(") + 
                       root->m_list[0]->m_atom + ":" + root->m_list[1]->m_atom + " " + 
                       root->m_list[2]->m_atom + ":" + root->m_list[3]->m_atom + "))";
        root->m_escape=false;
@@ -1034,7 +1039,7 @@ void proc_fig(SList *root){
    }
 
    if(root->m_atom == "polygon"){
-       root->m_atom = string("dbCreatePolygon(nil list(\"PM\" \"drawing\") list("); 
+       root->m_atom = string("dbCreatePolygon(nil list(" + purpose + " " + layer + ") list("); 
        for(auto it=root->m_list.begin(); it!=root->m_list.end(); it++){
              root->m_atom += (*it)->m_list[0]->m_atom + ":" + (*it)->m_list[1]->m_atom + " ";
        }
@@ -1043,6 +1048,25 @@ void proc_fig(SList *root){
        root->m_list.clear();
    }
 
+   if(root->m_atom == "label"){
+       root->m_atom = string("dbCreateLabel(nil list(" + purpose + " " + layer + ") ") + 
+                      root->m_list[2]->m_atom + ":" + root->m_list[3]->m_atom + " " + 
+                      root->m_list[1]->m_atom + ")";
+       root->m_escape=false;
+       root->m_list.clear();
+   }
+}
+
+void proc_inst(SList *root){
+   SList* hdr = root->m_list[1];
+//   root->m_atom = root->m_list[1]->m_atom;
+//   root->m_list = root->m_list[1]->m_list;
+   root->m_atom = string("dbCreateInstByMasterName(nil ") + hdr->m_list[0]->m_atom + " " +
+                  hdr->m_list[1]->m_atom + " " + hdr->m_list[2]->m_atom + " " + 
+                  "\"inst" + root->m_list[5]->m_atom + "\" " + 
+                  "list(" + root->m_list[2]->m_atom + " " + root->m_list[3]->m_atom + "))";
+   root->m_list.clear();
+   root->m_escape=false;
 }
 
 void proc_skill(SList *root, string prop_name=""){
@@ -1301,7 +1325,7 @@ if(argc<3 || i==atoi(argv[2])){
 #endif
 
 #if 1
-   vector<SList *> properties,groups;
+   vector<SList *> properties,groups,lps;
    for(auto it=allobjs.begin(); it!=allobjs.end(); it++){
       //if(!(*it)->m_list.size())
       //   continue;
@@ -1313,6 +1337,10 @@ if(argc<3 || i==atoi(argv[2])){
       }
       if((*it)->m_atom == "group"){
          groups.push_back(*it);
+         consumed.insert((*it)->m_ofst);
+      }
+      if((*it)->m_atom == "LP"){
+         lps.push_back(*it);
          consumed.insert((*it)->m_ofst);
       }
    }
@@ -1363,6 +1391,18 @@ if(argc<3 || i==atoi(argv[2])){
 
    printf("\ndang done %s\n", argv[1]);
 
+   printf("lps begin\n");
+   for(auto it=lps.begin(); it!=lps.end(); it++){
+//       proc_skill(*it);
+         set<SList*> parents;
+         print_reset(0);
+         parents.clear();
+         (*it)->print(&parents);
+         printf("\n");
+   }
+
+   printf("\ndang done %s\n", argv[1]);
+
    for(auto it=allobjs.begin(); it!=allobjs.end(); it++){
       if(!(*it)->m_list.size())
          continue;
@@ -1371,6 +1411,10 @@ if(argc<3 || i==atoi(argv[2])){
 
        if((*it)->m_atom.rfind("fig_",0)==0){
           proc_fig(*it);
+       }
+
+       if((*it)->m_atom.rfind("any_inst_",0)==0){
+          proc_inst(*it);
        }
 
        set<SList*> parents;
