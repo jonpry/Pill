@@ -793,11 +793,10 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
 
             if(fig_type_map.find(ftype) == fig_type_map.end()){
                printf("Unknown fig_type %d\n", ftype);
-               exit(0);
+               //exit(0);
+            }else{
+               new SList(rel_pos,"fig_" + fig_type_map[ftype],&args);
             }
-
-            new SList(rel_pos,"fig_" + fig_type_map[ftype],&args);
-
             rel_pos+=sizes32[type]+0x14;
             printbytes(&buf[opos], esz+(pos-opos));
             continue;
@@ -1207,6 +1206,16 @@ void proc_skill(SList *root, string prop_name=""){
       fclose(f);
 }
 
+string get_cell_name(char* fname) {
+  char *pch = strtok (fname,"/\\");
+  vector<string> tokens;
+  while(pch){
+    tokens.push_back(pch);
+    pch = strtok (NULL, "/\\");
+  }
+  return tokens[tokens.size()-3];
+}
+
 int main(int argc, char** argv){
    //Load entire file into memory
    //FILE* f = fopen("LAYOUT.CDB","r");
@@ -1403,6 +1412,7 @@ if(argc<3 || i==atoi(argv[2])){
 
    printf("\ndang done %s\n", argv[1]);
 
+   vector<SList*> statics;
    for(auto it=allobjs.begin(); it!=allobjs.end(); it++){
       if(!(*it)->m_list.size())
          continue;
@@ -1416,12 +1426,22 @@ if(argc<3 || i==atoi(argv[2])){
        if((*it)->m_atom.rfind("any_inst_",0)==0){
           proc_inst(*it);
        }
+       statics.push_back(*it);
+   }
 
+   string cell_name = get_cell_name(argv[1]);
+   string str = string("procedure  (pcGenCell_") + cell_name + "  (pcCellView \"d\")";
+   statics.push_back(new SList(0,")"));
+   SList *prog=new SList(0,str,&statics);
+   prog->m_escape=false;
+   {
        set<SList*> parents;
-       print_reset(0);
+       FILE *f = fopen("static.il","w+");
+       print_reset(f);
        parents.clear();
-       (*it)->print(&parents);
+       prog->print(&parents);
        printf("\n");
+       fclose(f);
    }
 
 #endif
