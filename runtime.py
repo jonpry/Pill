@@ -582,6 +582,11 @@ def dbCreateParamInstByMasterName(view, lib, cell, purpose, name, origin, orient
    dbCreateParamInst(view,cell,name,origin,orient,num,params,phys)
    return None
 
+def dbCreateInstByMasterName(view, lib, cell, purpose, name, origin, orient="R0"):
+   print("createinst")
+   dbCreateParamInst(view,cell,name,origin,orient,1,None)
+   return None
+
 def get_pname(s):
    print("get_pname: " + str(s))
    return s
@@ -824,6 +829,7 @@ def run(layermap_file,s,r,l):
    skill.procedures['dbOpenCellViewByType'] = dbOpenCellViewByType
    skill.procedures['dbCreateParamInst'] = dbCreateParamInst
    skill.procedures['dbCreateInst'] = findFunc('dbCreateInst')
+   skill.procedures['dbCreateInstByMasterName'] = dbCreateInstByMasterName
    skill.procedures['dbFlattenInst'] = findFunc('dbFlattenInst')
    skill.procedures['writeout'] = writeout #for debugging
    skill.procedures['pcExprToProp'] = nullfunc

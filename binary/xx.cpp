@@ -1436,7 +1436,7 @@ if(argc<3 || i==atoi(argv[2])){
    prog->m_escape=false;
    {
        set<SList*> parents;
-       FILE *f = fopen("static.il","w+");
+       FILE *f = fopen(("output/" + cell_name + ".il").c_str(),"w+");
        print_reset(f);
        parents.clear();
        prog->print(&parents);
