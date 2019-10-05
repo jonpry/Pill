@@ -20,119 +20,6 @@
 set<uint64_t> consumed;
 map<uint64_t,SList*> frompos;
 
-const char *types[] = { "0", "char", "short", "int", 
-                        "long", "float", "double", "pointer",
-                        "byte", "car", "cdr", "LPType", 
-                        "MX", "MXR90", "MY", "MYR90", 
-                        
-                        "PCB", "XXString", "XXfreeObject", "XXfreeObject2", 
-                        "XXgroup", "XXgroupMember", "XXilList", "XXilSymbol", 
-                        "XXparentChild", "XXpropVal", "XXproperty", "XXrange", 
-                        "XXrcb", "aBoolean", "aDouble", "aFileName", 
-
-                        "aFloat", "aIlExpr", "aInt", "aNetSet",
-                        "aNlpExpr", "aProperty", "aRange", "aSelfIdent", 
-                        "aString", "aTime", "accessDir", "ailList", 
-                        "analog", "arc", "arcType", "ascOwnrType", 
-
-                        "assocOwner", "assocOwnerUnion", "assocType", "assocUnion", 
-                        "associate", "attrAssocType", "attrOwner", "bBox", 
-                        "bbox", "beginExt", "behavioral", "bytes", 
-                        "cellName", "cellViewType", "child", "clock", 
-
-                        "columnBiasedMos", "columnOffset", "columnSpacing", "columns", 
-                        "connStatus", "connectOutside", "connected", "contraints", 
-                        "criticality", "dataFileId", "dbBBox", "dbPoint", 
-                        "defValue", "delta",  "deltaX", "deltaY", 
-
-                        "deltas", "direction", "displayFlags", "donut", 
-                        "donutType", "dot", "dotType", "dummy1", 
-                        "dummy2", "dummy3", "dummyType1", "dummyType2", 
-                        "dummyType3", "dummyType4", "dummyType5", "dummyType6", 
-
-                        "dummyType7", "edgeConnected", "ellipse", "ellipseType", 
-                        "emptyMosaic", "endExt", "extendExtend", "fig", 
-                        "firm", "flags", "freeArray", "freeArraySize", 
-                        "graphic", "ground", "group", "groupMemType", 
-
-                        "groupType", "headerRef", "height", "hole", 
-                        "icon", "index", "input", "inputOutput", 
-                        "inst", "instHeader", "instHeaderType", "instInfo", 
-                        "instPin", "instPinType", "instPinUnion", "instTerm", 
-
-                        "instTermType", "instTermUnion", "instType", "instanceList", 
-                        "instances", "instsBBox", "isGlobal", "isStart1", 
-                        "isStart2", "jumper", "lBound", "label",
-                        "labelAssocType", "labelType", "largeNetNumBits", "largeSigArray", 
-
-                        "lastInGroup", "lastSigArySize", "layer", "libName", 
-                        "line", "lineType", "locked", "logicModel",
-                        "lowerLeft", "mag", "magInst", "magInstInfo", 
-                        "manh2line", "manh2path", "maskLayout", "masterAttr", 
-//160
-                        "masterBBox", "masterMemRcb", "masterProp", "masterTermAttr", 
-                        "masterTermProp", "maxExtension", "memNet", "members", 
-                        "memoryRcb", "modifiedButNotSaved", "mosaic", "mosaicInstType",
-                        "mosaicTileType", "mosaicType", "nPoints", "nShapes",
-
-                         "name", "nameNumber", "nameString", "needToConnect",
-                         "net", "netFig", "netType", "netUnion", 
-                         "netlist", "next", "nextFree", "nextGroup", 
-                         "nextGroupForObject", "nextInAssoc", "nextInGroup", "nextInObj1", 
-//192
-                         "nextInObj2", "nextInOwner", "nextInView", "nextOnInst", 
-                         "nextOnInstTerm", "nextOnNet", "nextOnTerm", "numBits", 
-                         "numInst", "numInstTypes", "numInstances", "numMemNet", 
-                         "obj1", "obj2", "object", "offset",
-//208
-                         "ofjbtd", "oldInst", "orient", "output", 
-                         "owner", "pLPAnnex", "package", "pad", 
-                         "padSpace1", "padSpace2", "padSpace3", "padSpace4", 
-                         "pair", "paramAssocType", "parent", "path", 
-
-                         "pathType", "personality", "pin", "pinType", 
-                         "pinUnion", "placeInfo", "placeStatus", "placed", 
-                         "point0", "points", "polygon", "polygonType", 
-                         "prefixChar", "prop", "propAssocType", "propType", 
-//240
-                         "purpose", "quad", "r0", "r180", 
-                         "r270", "r90", "rcb", "readInFlag", 
-                         "rect", "rectType", "regularMosaic", "roundRound",
-                         "rowBiasedMosaic", "rowOffset", "rowSpacing", "rows",
- 
-                         "sBounds", "schematic", "schematicSymbol", "shape",
-                         "sibling", "sigArray", "sigType", "signal", 
-                         "simpleMosaic", "startAngle", "stranger", "style", 
-                         "subInfo", "subInst", "suggested", "supply", 
-//272
-                         "sweepAngle", "switch", "symbolic", "term", 
-                         "termType", "termUnion", "testLatch", "text", 
-                         "textDisplay", "textDisplayType", "theLabel", "timeStamp", 
-                         "truncateExtend", "type", "uBound", "uX", 
-    
-                         "uY", "uint1D", "unknown", "unplaced", 
-                         "unused", "unused2", "unused3", "upperRight", 
-                         "usedIn", "value", "valueType", "varExtendExtend", 
-                         "variants", "verilogMap", "view", "viewName", 
-//304
-                         "vofbtdP", "vofjtdP", "width", "x",
-                         "xy", "y", "yFirst", "ze2OldMosaic", 
-                         "zeAnyInst", "zeAnyInstName", "zeArc", "zeCellView", 
-                         "zeDonut", "zeFig", "zeFigPar", "zeInst", 
-//320
-                         "zeInstHeader", "zeInstInfo", "zeInstName", "zeInstPin", 
-                         "zeInstTerm", "zeLP", "zeLabel", "zeLine", 
-                         "zeLrgSigAryInfo", "zeMagInst", "zeMagInstInfo", "zeMosaic", 
-                         "zeMosaicTile", "zeNet", "zeNetFigUnion", "zeOldFig", 
-
-                         "zeOldInstHeader", "zeOldMosaic", "zeOldNetFig", "zeOldTextDisplay", 
-                         "zeOrthPolygon", "zePath", "zePhysConn", "zePin", 
-                         "zePinFigUnion", "zePlacementInfo", "zePolygon", "zeSig", 
-                         "zeTerm", "zeTextDisplay", "zeUX", "zeUX2", 
-//352
-                         "zeUY", "zeUY2", "zeUnionX", "zeUnionY", 
-                         "zebBox", "zeoldFigPar", "zeoldsubInfo", "zeoldsubInst", 
-                         "zesubinfo", "zesubInst"}; 
 /*  Sizes64
 Type Name		Type Id		Size in bytes
 ----------		--------	-------------
@@ -201,6 +88,40 @@ zeMagInst       	    95			16
 zeLrgSigAryInfo 	    96			 8
 */
 
+const char* types[] = {"char", "char", "short", "short",
+                       "int", "int", "long", "long",
+                       "float", "float", "double", "double",
+                       "pointer", "pointer", "byte", "byte",
+
+
+                       "XXrcb", "XXfreeObject2", "XXfreeObject", "XXproperty",
+                       "XXrange", "XXgroup", "XXgroupMember", 0,
+                       0, 0, 0, 0,
+                       0, 0, 0, 0,
+                
+                       "XXilSymbol", "XXilList", "dbPoint", "dbPoint",
+                       "dbBBox", "dbBBox", "XXparentChild", 0,
+                       "XXSstring", 0, 0, 0,
+                       0,0,0,0,
+
+                       0,0,"zeCellView", "zeOldInstHeader",  //48
+                       "zeLP", 0, 0, 0,
+                       0, 0, 0, 0,
+                       "zeOldFig", "zeInst", "ze2OldMasic", "zeMosaicTile",
+
+                       "zeMosaicTile", "zeLabel", "zeArc", "zeDonut", //64
+                       "zePolyon", "zeOrthPolygon", 0, "zeLine", 
+                       0, 0, "zePath", 0,
+                       0, 0, 0, 0,
+
+                       "zeNet", "zeSig", "zeTerm", "zePin",
+                       "zeInstTerm", "zeInstPin", "zeOldNetFig", "zePhysConn",
+                       "zeOldMosaic", "zeFig", "zeOldTextDisplay", "zeTextDisplay",
+                       "zeInstHeader", "zeMosaic", "zeAnyInst", "zeMagInst",
+
+                       "zeLrgSigAryInfo"};
+
+
 uint32_t sizes32[] = { 4, 1, 2, 2, 4, 4, 4, 4,  //0
                      4, 4, 8, 8, 4, 4, 1, 1,  //8
                      0x24, 0, 4, 0x8, 0x14, 0x10, 0x10, 0x14, //0x10 
@@ -230,20 +151,6 @@ uint32_t sizesc32[] = { 4, 1, 4, 2, 4, 4, 4, 4,  //0
                      0x14, 0xc, 8, 0x14, 0x30, 0x20, 0x1a, 0x2c,//0x58
                      0x44, 0x30, 0x20, 8};
 
-uint32_t stringidx[] = {1, 1, 2, 2, 3, 3, 4, 4, //0
-                        5, 5, 6, 6, 7, 7, 8, 8, //0x8
-                        0x1c, 0, 0x13, 0x12, 0x1a, 0x1b, 0x14, 0x15, //0x10
-                        0, 0, 0, 0, 0, 0, 0, 0, //0x18
-                        0x17, 0x16, 0x4B, 0x4B, 0x4A, 0x4A, 0x18, 0,  //0x20
-                        0x11, 0, 0, 0, 0, 0, 0, 0, //0x28
-                        0, 0, 315, 0x150, 0x145, 0, 0, 0, //0x30
-                        0, 0, 0, 0, 0x14f, 0x13f, 0x137, 0x14c, //0x38
-                        0x14c, 0x146, 0x13a, 0x13c, 0x15a, 0x154, 0, 0x147, //0x40 
-                        0, 0, 0x155, 0, 0, 0, 0, 0, //0x48
-                        0x14d, 0x15b, 0x15c, 0x157, 0x144, 0x143, 0x152, 0x156, //0x50, 
-                        0x151, 0x13d, 0x153, 0x15d, 0x140, 0x14b, 0x138, 0x149,
-                        0x148, 0, 0, 0}; 
-
 set<uint32_t> arrayTypes = {1,3,5,7,9,11,13,15,35,37,64};
 
 string prop_types[] = { "uknown", "string", "int", "float", "bool", "time", "file", "expr", "nexpr", "hier", "list", "net"};
@@ -267,7 +174,7 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
        //if(i==0)
        while(b>0){
        uint32_t type = __bswap_16(*(uint16_t*)&buf[pos+2]) & 0xFF; 
-       if(type>96 || !stringidx[type])
+       if(type>96 || !type)
           return;
 
        uint32_t esz = sizes32[type];
@@ -275,7 +182,7 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
        uint32_t nelem=1; //if !arrayType
 
        uint32_t rel_pos = ((i+1)<<16) + pos-seg_start - 0x40 + 0x4 + 1;
-       printf("El Type: %x %dd,%s, TS: %d@%lx:%lx  %x\n", type, type, types[stringidx[type]], esz, rel_pos+(type==1?8:0),pos, __bswap_32(*(uint32_t*)&buf[pos]));
+       printf("El Type: %x %dd,%s, TS: %d@%lx:%lx  %x\n", type, type, types[type], esz, rel_pos+(type==1?8:0),pos, __bswap_32(*(uint32_t*)&buf[pos]));
        assert(*(uint16_t*)&buf[pos] == 0);
 
        //assert(typeMap.find(type) != typeMap.end());
@@ -395,7 +302,7 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
         }
  
         if(frompos.find(rel_pos) == frompos.end()){
-            new SList(rel_pos,string("unknown_") + types[stringidx[type]]);
+            new SList(rel_pos,string("unknown_") + types[type]);
         }
 
         printbytes(&buf[pos], esz);
@@ -475,7 +382,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
        uint32_t opos=pos;
 
        uint32_t type = buf[pos]; 
-       if(type>96 || !stringidx[type]){
+       if(type>96 || !type){
           printf("Bad type %x %d\n", type, type);
           //exit(0);
           assert(false);
@@ -490,7 +397,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
           rel_pos += 0x38;
        rel_pos+=4;
 
-       printf("El Type: %x,%s, TS: %d@%lx:%lx  %x in %s\n", type, types[stringidx[type]], esz, (type==0x1?8:0)+rel_pos,pos, __bswap_32(*(uint32_t*)&buf[pos]), fname);
+       printf("El Type: %x,%s, TS: %d@%lx:%lx  %x in %s\n", type, types[type], esz, (type==0x1?8:0)+rel_pos,pos, __bswap_32(*(uint32_t*)&buf[pos]), fname);
 
        //assert(typeMap.find(type) != typeMap.end());
 
@@ -902,7 +809,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
         }
 
         if(frompos.find(rel_pos) == frompos.end()){
-            new SList(rel_pos,string("unknown_") + types[stringidx[type]],&args);
+            new SList(rel_pos,string("unknown_") + types[type],&args);
         }
 
 
@@ -1452,7 +1359,7 @@ if(argc<3 || i==atoi(argv[2])){
    for(int i=0; i < 97; i++){
       if(!stringidx[i])
          continue;
-      printf("%16.16s\t%2d\t%3d\n", types[stringidx[i]],i,sizes32[i]);
+      printf("%16.16s\t%2d\t%3d\n", types[i],i,sizes32[i]);
    }
 #endif
 }
