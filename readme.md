@@ -7,9 +7,9 @@
 ## Requirements
 - Python 3.7+
 - Klayout built with Python 3.7+
-- Parsimonious
+- Parsimonious, eg. pip3 install parsimonious
 - Python bytecode package, eg. pip3 install bytecode
-- G++
+- G++ for CDB/Virtuso binary tools
    
 ## Getting started
    First you must extract data from the PDK and make appropriate edits to entry.py. Entry.py is a template file for cell generation.
@@ -55,4 +55,13 @@ Many people do not have the SkillDev license required to pretty-print skill code
 The decrypt tool in the binary directory is able to extract usable skill code from .ile files
 
 ## CDB File format
-An alpha tool is available for extracting the contents of CDB format files. Currently it seems to extract usable Skill, but some work needs to be done to package the code, props, and geometry into something readily loadable by Pill. Currently only loads files written from big-endian 32-bit machines because I don't have any other CDB's to test on.
+A beta tool is available for extracting the contents of CDB format files. Currently it seems to extract usable Skill and static geometry, but pcell extraction is somewhat manual as far as extracting code and props, and then importing into Pill. Currently only loads files written from big-endian 32-bit machines because I don't have any other CDB's to test on. 
+### Loading static CDB files
+1. cd binary
+2. ./build.sh
+3. ./xx /path/to/pdk/library/cell_name/LAYOUT/LAYOUT.CDB      //It is important that the destination path is formatted correctly as the cell name is extracted from the subdirectory
+4. The output will be written to output/cell_name.il   //Viewing this file will show any instantiated cells that may also need to be extracted
+5. Edit static_cells[] in entry.py to load the cells. 
+6. Change interp.layout("cell_name") in entry.py to correct cell
+7. Run ./entry.py and the output will be generated into "foo.gds"
+
