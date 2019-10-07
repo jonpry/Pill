@@ -11,7 +11,16 @@
 - Python bytecode package, eg. pip3 install bytecode
 - G++ for CDB/Virtuso binary tools
    
-## Getting started
+## CDB Examples
+1. Run 'git submbodule update --init' to download the example PDK
+2. cd into ./binary
+3. Run ./build.sh
+4. Run ./proc_examples.sh
+5. From the root directory, run ./entry.py
+6. This will takes some time to compile all of the cells, future runs will be faster. 
+7. Open foo.gds in klayout
+
+## Getting started with PCELLS
    First you must extract data from the PDK and make appropriate edits to entry.py. Entry.py is a template file for cell generation.
    1.  Find your layermap file. Pill knows how to read files with '#' comments and 4 element tuples describing each layer. Such as:
 ```
