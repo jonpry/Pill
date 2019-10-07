@@ -20,6 +20,13 @@
 set<uint64_t> consumed;
 map<uint64_t,SList*> frompos;
 
+bool big_endian;
+
+#define __nswap_16(x) (big_endian?__bswap_16(x):x)
+#define __nswap_32(x) (big_endian?__bswap_32(x):x)
+#define __nswap_64(x) (big_endian?__bswap_64(x):x)
+
+
 /*  Sizes64
 Type Name		Type Id		Size in bytes
 ----------		--------	-------------
@@ -173,7 +180,7 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
        //Some kind of element header
        //if(i==0)
        while(b>0){
-       uint32_t type = __bswap_16(*(uint16_t*)&buf[pos+2]) & 0xFF; 
+       uint32_t type = __nswap_16(*(uint16_t*)&buf[pos+2]) & 0xFF; 
        if(type>96 || !type)
           return;
 
@@ -182,7 +189,7 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
        uint32_t nelem=1; //if !arrayType
 
        uint32_t rel_pos = ((i+1)<<16) + pos-seg_start - 0x40 + 0x4 + 1;
-       printf("El Type: %x %dd,%s, TS: %d@%lx:%lx  %x\n", type, type, types[type], esz, rel_pos+(type==1?8:0),pos, __bswap_32(*(uint32_t*)&buf[pos]));
+       printf("El Type: %x %dd,%s, TS: %d@%lx:%lx  %x\n", type, type, types[type], esz, rel_pos+(type==1?8:0),pos, __nswap_32(*(uint32_t*)&buf[pos]));
        assert(*(uint16_t*)&buf[pos] == 0);
 
        //assert(typeMap.find(type) != typeMap.end());
@@ -191,7 +198,7 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
        b-=0x4;
 
        if(arrayTypes.find(type)!=arrayTypes.end()){
-          esz = __bswap_32(*(uint32_t*)&buf[pos]) - 4;
+          esz = __nswap_32(*(uint32_t*)&buf[pos]) - 4;
           rel_pos+=8;
           if(type==1){ //string
              printf("String: %x %s\n", esz, &buf[pos+8]);
@@ -200,7 +207,7 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
        }
 
        if(type==32){
-            uint32_t aloc = __bswap_32(*(uint32_t*)&buf[pos]) &0xFFFFF;
+            uint32_t aloc = __nswap_32(*(uint32_t*)&buf[pos]) &0xFFFFF;
             printf("Aloc: %X\n", aloc);
             vector<SList*> args;
             if(aloc)
@@ -209,7 +216,7 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
        }
 
        if(type==4){
-            int32_t aloc = __bswap_32(*(int32_t*)&buf[pos]);
+            int32_t aloc = __nswap_32(*(int32_t*)&buf[pos]);
             new SList(rel_pos,to_string(aloc));
        }
 
@@ -219,14 +226,14 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
        }
 
        if(type==10){
-            uint64_t aloc = __bswap_64(*(uint64_t*)&buf[pos]);
+            uint64_t aloc = __nswap_64(*(uint64_t*)&buf[pos]);
             double d = *(double*)&aloc;
             new SList(rel_pos,format_double(d));
        }
 
        if(type==19){
-            uint32_t aloc = __bswap_32(*(uint32_t*)&buf[pos]);
-            esz += __bswap_32(*(uint32_t*)&buf[pos+4])*4;
+            uint32_t aloc = __nswap_32(*(uint32_t*)&buf[pos]);
+            esz += __nswap_32(*(uint32_t*)&buf[pos+4])*4;
             printf("Aloc: %X\n", aloc);
             vector<SList*> args;
             if(aloc)
@@ -236,10 +243,10 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
      
 
        if(type==20){
-            uint32_t aloc = __bswap_32(*(uint32_t*)&buf[pos]);
-            uint32_t bloc = __bswap_32(*(uint32_t*)&buf[pos+0xc]);
-            uint32_t cloc = __bswap_32(*(uint32_t*)&buf[pos+0x10]);
-            uint32_t dloc = __bswap_32(*(uint32_t*)&buf[pos+4]);
+            uint32_t aloc = __nswap_32(*(uint32_t*)&buf[pos]);
+            uint32_t bloc = __nswap_32(*(uint32_t*)&buf[pos+0xc]);
+            uint32_t cloc = __nswap_32(*(uint32_t*)&buf[pos+0x10]);
+            uint32_t dloc = __nswap_32(*(uint32_t*)&buf[pos+4]);
             uint8_t ptype = buf[pos+8];
 
             printf("Aloc: %X %X %X %X %X\n", aloc, bloc, cloc, dloc, ptype);
@@ -269,8 +276,8 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
         }
 
        if(type==21){ //range
-            uint32_t aloc = __bswap_32(*(uint32_t*)&buf[pos+4]);
-            uint32_t bloc = __bswap_32(*(uint32_t*)&buf[pos+8]);
+            uint32_t aloc = __nswap_32(*(uint32_t*)&buf[pos+4]);
+            uint32_t bloc = __nswap_32(*(uint32_t*)&buf[pos+8]);
             vector<SList*> args;
 
             if(aloc)
@@ -282,8 +289,8 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
         }
 
         if(type==33){
-            uint32_t aloc = __bswap_32(*(uint32_t*)&buf[pos]);
-            uint32_t bloc = __bswap_32(*(uint32_t*)&buf[pos+4]);
+            uint32_t aloc = __nswap_32(*(uint32_t*)&buf[pos]);
+            uint32_t bloc = __nswap_32(*(uint32_t*)&buf[pos+4]);
             printf("Aloc: %X %X\n", aloc, bloc);
             vector<SList*> args;
             if(aloc)
@@ -314,8 +321,11 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
 
 SList* consume_pointer(uint32_t *pos, int32_t *b, uint8_t *buf, bool force=false, uint32_t *rel_pos=0){
    SList *ret=0;
-   if(buf[(*pos)+1] || force){
-      uint32_t aloc = __bswap_32(*(uint32_t*)&buf[*pos]);
+   uint16_t seg = __nswap_16(*(uint16_t*)&buf[*pos]);
+   uint16_t ofs = __nswap_16(*(uint16_t*)&buf[(*pos)+2]);
+
+   if(seg || force){
+      uint32_t aloc = (seg << 16) + ofs;
       *pos+=4;
       *b-=4;
       ret = new SList(true,aloc);
@@ -333,14 +343,14 @@ SList* consume_pointer(uint32_t *pos, int32_t *b, uint8_t *buf, bool force=false
 }
 
 SList* consume_u32(uint32_t *pos, int32_t *b, uint8_t *buf){
-   uint32_t aloc = __bswap_32(*(uint32_t*)&buf[*pos]);
+   uint32_t aloc = __nswap_32(*(uint32_t*)&buf[*pos]);
    *pos+=4;
    *b-=4;
    return new SList(0,"0x" + to_hex(aloc));
 }
 
 SList* consume_s32(uint32_t *pos, int32_t *b, uint8_t *buf){
-   int32_t aloc = __bswap_32(*(int32_t*)&buf[*pos]);
+   int32_t aloc = __nswap_32(*(int32_t*)&buf[*pos]);
    *pos+=4;
    *b-=4;
    SList* ret=new SList(0,to_string(aloc));
@@ -397,7 +407,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
           rel_pos += 0x38;
        rel_pos+=4;
 
-       printf("El Type: %x,%s, TS: %d@%lx:%lx  %x in %s\n", type, types[type], esz, (type==0x1?8:0)+rel_pos,pos, __bswap_32(*(uint32_t*)&buf[pos]), fname);
+       printf("El Type: %x,%s, TS: %d@%lx:%lx  %x in %s\n", type, types[type], esz, (type==0x1?8:0)+rel_pos,pos, __nswap_32(*(uint32_t*)&buf[pos]), fname);
 
        //assert(typeMap.find(type) != typeMap.end());
 
@@ -409,7 +419,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
            esz=0;
            args.push_back(consume_pointer(&pos,&b,buf));
        }else if(arrayTypes.find(type)!=arrayTypes.end()){
-          esz = __bswap_16(*(uint16_t*)&buf[pos]) - 12;
+          esz = __nswap_16(*(uint16_t*)&buf[pos]) - 12;
           pos+=2;
           b-=2;
 
@@ -425,8 +435,8 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
              pos+=esz;
              b-=esz;
           }
-          if(__bswap_16(*(uint16_t*)&buf[opos+1])-4 > 0xC)
-             rel_pos+=__bswap_16(*(uint16_t*)&buf[opos+1])-4;
+          if(__nswap_16(*(uint16_t*)&buf[opos+1])-4 > 0xC)
+             rel_pos+=__nswap_16(*(uint16_t*)&buf[opos+1])-4;
           else
              rel_pos+=0xc;
           //rel_pos+=esz+8;
@@ -439,11 +449,11 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             new SList(rel_pos,to_string(aloc));
             extra=4;
        }else if(type==4){ //int
-            int32_t aloc = __bswap_32(*(int32_t*)&buf[pos]);
+            int32_t aloc = __nswap_32(*(int32_t*)&buf[pos]);
             new SList(rel_pos,to_string(aloc));
        }else if(type==10){ //double
-            uint64_t aloc = __bswap_64(*(uint64_t*)&buf[pos]);
-            uint32_t bloc = __bswap_32(*(uint32_t*)&buf[pos]);
+            uint64_t aloc = __nswap_64(*(uint64_t*)&buf[pos]);
+            uint32_t bloc = __nswap_32(*(uint32_t*)&buf[pos]);
             double d = *(double*)&aloc;
             printf("D: %lX S: %X %.14g %f\n", aloc, bloc, d, *(float*)&bloc);
             new SList(rel_pos,format_double(d));
@@ -474,7 +484,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
        }else if(type==19){ //freeobject
            esz=4;
            extra=4;
-           uint32_t free = __bswap_32(*(uint32_t*)&buf[pos]);
+           uint32_t free = __nswap_32(*(uint32_t*)&buf[pos]);
            extra += 4 * free;
        }else if(type==20){ //property
             esz=0;
@@ -586,7 +596,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             extra=0x10;
         }else if(type==68){
             esz=0;
-            uint32_t cnt = __bswap_32(*(uint32_t*)&buf[pos]);            
+            uint32_t cnt = __nswap_32(*(uint32_t*)&buf[pos]);            
             pos+=4;
             b-=4;
             for(uint32_t j=0; j < cnt; j++){
@@ -599,7 +609,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             new SList(rel_pos,"polygon",&args);
         }else if(type==71){ //zeLine
             esz=0;
-            uint32_t pcnt = __bswap_32(*(uint32_t*)&buf[pos]);
+            uint32_t pcnt = __nswap_32(*(uint32_t*)&buf[pos]);
             pos+=4;
             b-=4;
             for(uint32_t i=0; i < pcnt; i++){
@@ -613,7 +623,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             args.push_back(consume_u32(&pos,&b,buf));
 
             esz=0;
-            uint32_t cnt = __bswap_16(*(uint16_t*)&buf[pos]);            
+            uint32_t cnt = __nswap_16(*(uint16_t*)&buf[pos]);            
             pos+=2;
             b-=2;
 
@@ -622,8 +632,8 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             args.push_back(consume_u32(&pos,&b,buf));
 
             for(uint32_t j=0; j < cnt; j++){
-               args.push_back(consume_u32(&pos,&b,buf));
-               args.push_back(consume_u32(&pos,&b,buf));
+               args.push_back(consume_s32(&pos,&b,buf));
+               args.push_back(consume_s32(&pos,&b,buf));
             }
             new SList(rel_pos,"path",&args);
             extra+=2;
@@ -938,8 +948,8 @@ void proc_fig(SList *root){
 
    if(root->m_atom == "bbox"){
        root->m_atom = string("dbCreateRect(nil list(" + purpose + " " + layer + ") list(") + 
-                      root->m_list[0]->m_atom + ":" + root->m_list[1]->m_atom + " " + 
-                      root->m_list[2]->m_atom + ":" + root->m_list[3]->m_atom + "))";
+                      "(" + root->m_list[0]->m_atom + ":" + root->m_list[1]->m_atom + ") " + 
+                      "(" + root->m_list[2]->m_atom + ":" + root->m_list[3]->m_atom + ")))";
        root->m_escape=false;
        root->m_list.clear();
    }
@@ -947,7 +957,7 @@ void proc_fig(SList *root){
    if(root->m_atom == "polygon"){
        root->m_atom = string("dbCreatePolygon(nil list(" + purpose + " " + layer + ") list("); 
        for(auto it=root->m_list.begin(); it!=root->m_list.end(); it++){
-             root->m_atom += (*it)->m_list[0]->m_atom + ":" + (*it)->m_list[1]->m_atom + " ";
+             root->m_atom += "(" + (*it)->m_list[0]->m_atom + ":" + (*it)->m_list[1]->m_atom + ") ";
        }
        root->m_atom += "))";
        root->m_escape=false;
@@ -956,8 +966,19 @@ void proc_fig(SList *root){
 
    if(root->m_atom == "label"){
        root->m_atom = string("dbCreateLabel(nil list(" + purpose + " " + layer + ") ") + 
-                      root->m_list[2]->m_atom + ":" + root->m_list[3]->m_atom + " " + 
+                      "(" + root->m_list[2]->m_atom + ":" + root->m_list[3]->m_atom + ") " + 
                       root->m_list[1]->m_atom + ")";
+       root->m_escape=false;
+       root->m_list.clear();
+   }
+
+   if(root->m_atom == "path"){
+       root->m_atom = string("dbCreatePath(nil list(" + purpose + " " + layer + ") list("); 
+       for(auto it=next(root->m_list.begin(),4); it!=root->m_list.end(); it++){
+             root->m_atom += "(" + (*it++)->m_atom + ":";
+             root->m_atom += (*it)->m_atom + ") ";
+       }
+       root->m_atom += "))";
        root->m_escape=false;
        root->m_list.clear();
    }
@@ -970,7 +991,7 @@ void proc_inst(SList *root){
    root->m_atom = string("dbCreateInstByMasterName(nil ") + hdr->m_list[0]->m_atom + " " +
                   hdr->m_list[1]->m_atom + " " + hdr->m_list[2]->m_atom + " " + 
                   "\"inst" + root->m_list[5]->m_atom + "\" " + 
-                  "list(" + root->m_list[2]->m_atom + " " + root->m_list[3]->m_atom + "))";
+                  "(" + root->m_list[2]->m_atom + ":" + root->m_list[3]->m_atom + "))";
    root->m_list.clear();
    root->m_escape=false;
 }
@@ -1143,8 +1164,11 @@ int main(int argc, char** argv){
 
 
    endian = __bswap_32(endian);
-   maybe_len = __bswap_32(maybe_len);
-   nsegs = __bswap_32(nsegs);
+   big_endian = endian == 0x1020304;
+
+   maybe_len = __nswap_32(maybe_len);
+   nsegs = __nswap_32(nsegs);
+
  
    printf("SrcID: %X, Date: %s, Data Len: %d, Segments %X, Endian: %X, Txt: %s @%s\n", srcid, date, maybe_len, nsegs, endian, text0, argv[1]);
 
@@ -1152,12 +1176,12 @@ int main(int argc, char** argv){
    for(uint32_t i=0; i < nsegs; i++){
        uint64_t seg_start=pos;
        //Seg is 0x40 bytes
-       uint32_t e = __bswap_32(*(uint32_t*)&buf[pos+0x4]); //Checksum
+       uint32_t e = __nswap_32(*(uint32_t*)&buf[pos+0x4]); //Checksum
 
-       uint32_t a = __bswap_32(*(uint32_t*)&buf[pos+0xc]);
-       uint32_t b = __bswap_32(*(uint32_t*)&buf[pos+0x10]);
-       uint32_t c = __bswap_32(*(uint32_t*)&buf[pos+0x14]);
-       uint32_t d = __bswap_32(*(uint32_t*)&buf[pos+0x18]);
+       uint32_t a = __nswap_32(*(uint32_t*)&buf[pos+0xc]);
+       uint32_t b = __nswap_32(*(uint32_t*)&buf[pos+0x10]);
+       uint32_t c = __nswap_32(*(uint32_t*)&buf[pos+0x14]);
+       uint32_t d = __nswap_32(*(uint32_t*)&buf[pos+0x18]);
 
 
        uint32_t compress = buf[pos+0x20];
@@ -1328,12 +1352,11 @@ if(argc<3 || i==atoi(argv[2])){
 
        if((*it)->m_atom.rfind("fig_",0)==0){
           proc_fig(*it);
-       }
-
-       if((*it)->m_atom.rfind("any_inst_",0)==0){
+          statics.push_back(*it);
+       }else if((*it)->m_atom.rfind("any_inst_",0)==0){
           proc_inst(*it);
+          statics.push_back(*it);
        }
-       statics.push_back(*it);
    }
 
    string cell_name = get_cell_name(argv[1]);

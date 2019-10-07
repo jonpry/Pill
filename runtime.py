@@ -570,6 +570,9 @@ def dbCreateParamInst(view, cell, name, origin, orient, num=1, parm=None, phys=F
    assert(num==1) 
 
    kobj = ilayout(cell,parm)
+   if not kobj:
+      print("Instantiation failed")
+      return None
    dcell = db.DCellInstArray.new(kobj.cell_index(),db.DTrans.new(getRot(orient),False,float(origin[0]),float(origin[1])))
    dcell = top.insert(dcell)
 
@@ -839,6 +842,7 @@ def run(layermap_file,s,r,l):
    skill.procedures['dbCreateTerm'] = nullfunc
    skill.procedures['dbCreatePin'] = nullfunc
    skill.procedures['dbCreatePolygon'] = dbCreatePolygon
+   skill.procedures['dbCreatePath'] = nullfunc
    skill.procedures['dbDeleteObject'] = nullfunc
 
 def load_props(props_file):

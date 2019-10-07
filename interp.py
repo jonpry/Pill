@@ -677,7 +677,7 @@ class Visitor(NodeVisitor):
        return gen
 
     def visit_keyword_func(self,node,children):
-       print("visit keyword_func: " + str(children[0]()))
+       print("visit keyword_func: " + str(children[1]()))
        return self.kwfunc(1,node,children)
 
     def visit_func_call2(self,node,children):
@@ -1322,6 +1322,8 @@ import runtime as runtime
 
 cell_lib = {}
 def layout(cell,extra_params=None):
+   if not cell in cell_defs:
+      return 
    context.push()
    loadcell(cell)
    global pcell_updates
