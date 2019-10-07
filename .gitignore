@@ -1,0 +1,6 @@
+*.pyc
+binary/cdb
+binary/daenerys
+binary/decrypt
+binary/output/*
+foo.gds

@@ -5,7 +5,6 @@ import pickle
 import marshal
 import copyreg
 import types
-import new
 
 library = "mytech"
 layermap_file = "mytech.layermap"
@@ -21,7 +20,14 @@ nch = {"func"     : "nch_layout",
 """}
 
 #Add any CDB static cells you want to load here
-static_cell_names = ["AD2", "M1CUT", "PWelltie2", "PYM1CON", "M1M2VIA", "NWELLTIE"]
+static_cell_names = ["AND2X1", "AND2X2", "AOI21X1", "AOI22X1",
+          "BUFX2", "BUFX4", "CLKBUF1", "CLKBUF2", "CLKBUF3",
+          "DFFNEGX1", "DFFPOSX1", "DFFSR", "FAX1", "FILL", "HAX1", "INVX1",
+          "INVX2", "INVX4", "INVX8", "LATCH", "MUX2X1", "NAND2X1",
+          "NAND3X1", "NOR2X1", "NOR3X1", "OAI21X1", "OAI22X1",
+          "OR2X1", "OR2X2", "TBUFX1", "TBUFX2", "XNOR2X1",
+          "XOR2X1"]
+
 static_cells = {}
 for name in static_cell_names:
    static_cells[name] = {"func"     : "pcGenCell_" + name,
@@ -34,8 +40,8 @@ for name in static_cell_names:
 interp.skill.variables['labelType'] = None
 
 
-#codes = ['test.il']
-codes = ['cbtools2.il','cbtools.il','cb.il','creategate.il','creatediff.il','nch.il']
+#pcell codes = ['test.il']
+codes = []
 
 #Add code for static cells
 for k,v in static_cells.items():
@@ -61,14 +67,14 @@ print(cells)
 interp.load_cells(cells)
 
 #Optionally change some parameters through pcell callbacks
-interp.pcell_apply('w',"500n")
-interp.pcell_apply('fingers',"3")
+#interp.pcell_apply('w',"500n")
+#interp.pcell_apply('fingers',"3")
 
 try:
    #Run it
-   interp.layout('nch')
+   interp.layout('DFFPOSX1')
 except:
-   print interp.skill.variables
+   print(interp.skill.variables)
 
    raise
 print(interp.skill.variables)
