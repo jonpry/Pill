@@ -105,7 +105,7 @@ const char* types[] = {"char", "char", "short", "short",
                        "XXrange", "XXgroup", "XXgroupMember", 0,
                        0, 0, 0, 0,
                        0, 0, 0, 0,
-                
+
                        "XXilSymbol", "XXilList", "dbPoint", "dbPoint",
                        "dbBBox", "dbBBox", "XXparentChild", 0,
                        "XXSstring", 0, 0, 0,
@@ -117,7 +117,7 @@ const char* types[] = {"char", "char", "short", "short",
                        "zeOldFig", "zeInst", "ze2OldMasic", "zeMosaicTile",
 
                        "zeMosaicTile", "zeLabel", "zeArc", "zeDonut", //64
-                       "zePolyon", "zeOrthPolygon", 0, "zeLine", 
+                       "zePolyon", "zeOrthPolygon", 0, "zeLine",
                        0, 0, "zePath", 0,
                        0, 0, 0, 0,
 
@@ -131,7 +131,7 @@ const char* types[] = {"char", "char", "short", "short",
 
 uint32_t sizes32[] = { 4, 1, 2, 2, 4, 4, 4, 4,  //0
                      4, 4, 8, 8, 4, 4, 1, 1,  //8
-                     0x24, 0, 4, 0x8, 0x14, 0x10, 0x10, 0x14, //0x10 
+                     0x24, 0, 4, 0x8, 0x14, 0x10, 0x10, 0x14, //0x10
                      0, 0, 0, 0, 0, 0, 0, 0, //0x18
                      4, 8, 8, 8, 0x10, 0x10, 8, 0, //0x20
                      4, 0, 0, 0, 0, 0, 0, 0, //0x28
@@ -146,7 +146,7 @@ uint32_t sizes32[] = { 4, 1, 2, 2, 4, 4, 4, 4,  //0
 
 uint32_t sizesc32[] = { 4, 1, 4, 2, 4, 4, 4, 4,  //0
                      4, 4, 8, 8, 4, 4, 1, 1,  //0x8
-                     0x24, 0, 4, 0x8, 0xe, 0x10, 0x9, 0x10, //0x10 
+                     0x24, 0, 4, 0x8, 0xe, 0x10, 0x9, 0x10, //0x10
                      0, 0, 0, 0, 0, 0, 0, 0, //0x18
                      4, 8, 8, 8, 0x10, 0x10, 8, 0, //0x20
                      4, 0, 0, 0, 0, 0, 0, 0, //0x28
@@ -180,16 +180,16 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
        //Some kind of element header
        //if(i==0)
        while(b>0){
-       uint32_t type = __nswap_16(*(uint16_t*)&buf[pos+2]) & 0xFF; 
+       uint32_t type = __nswap_16(*(uint16_t*)&buf[pos+2]) & 0xFF;
        if(type>96 || !type)
           return;
 
        uint32_t esz = sizes32[type];
- 
+
        uint32_t nelem=1; //if !arrayType
 
        uint32_t rel_pos = ((i+1)<<16) + pos-seg_start - 0x40 + 0x4 + 1;
-       printf("El Type: %x %dd,%s, TS: %d@%lx:%lx  %x\n", type, type, types[type], esz, rel_pos+(type==1?8:0),pos, __nswap_32(*(uint32_t*)&buf[pos]));
+       printf("El Type: %x %dd,%s, TS: %d@%x:%x  %x\n", type, type, types[type], esz, rel_pos+(type==1?8:0),pos, __nswap_32(*(uint32_t*)&buf[pos]));
        assert(*(uint16_t*)&buf[pos] == 0);
 
        //assert(typeMap.find(type) != typeMap.end());
@@ -240,7 +240,7 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
                args.push_back(new SList(true,aloc));
             new SList(rel_pos,"freeObject",&args);
        }
-     
+
 
        if(type==20){
             uint32_t aloc = __nswap_32(*(uint32_t*)&buf[pos]);
@@ -285,7 +285,7 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
             if(bloc)
                args.push_back(new SList(true, bloc));
             new SList(rel_pos,"range",&args);
-   
+
         }
 
         if(type==33){
@@ -305,9 +305,9 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
         }
 
         if(type==50){
-            new SList(rel_pos,"zeCellView");//TODO: don't know if multiple can exist in single file          
+            new SList(rel_pos,"zeCellView");//TODO: don't know if multiple can exist in single file
         }
- 
+
         if(frompos.find(rel_pos) == frompos.end()){
             new SList(rel_pos,string("unknown_") + types[type]);
         }
@@ -369,17 +369,17 @@ SList* consume_byte(uint32_t *pos, int32_t *b, uint8_t *buf, bool decimal=false)
 map<int,string> fig_type_map = {
                       {0, "label"},
                       {5, "rect"},
-                      {6, "polygon"}, 
-                      {7, "line"}, 
-                      {8, "path"}, 
+                      {6, "polygon"},
+                      {7, "line"},
+                      {8, "path"},
                       {0xa, "label"}, //TODO: Maybe pin or something
-                      {0xb, "ellipse"}, 
-                      {0xc, "donut"}, 
-                      {0xd, "mosaic"}, 
-                      {0xf, "maginst"}, 
+                      {0xb, "ellipse"},
+                      {0xc, "donut"},
+                      {0xd, "mosaic"},
+                      {0xf, "maginst"},
                       {0x1a, "dot"},
                       {0x21, "textdisplay"}};
-                     //TODO: 0x22-0x25 are some kind of manhattan distance thing 
+                     //TODO: 0x22-0x25 are some kind of manhattan distance thing
 
 
 void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32_t b, const char* fname){
@@ -391,7 +391,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
        vector<SList*> args;
        uint32_t opos=pos;
 
-       uint32_t type = buf[pos]; 
+       uint32_t type = buf[pos];
        if(type>96 || !type){
           printf("Bad type %x %d\n", type, type);
           //exit(0);
@@ -400,21 +400,21 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
        }
 
        uint32_t esz = sizesc32[type];
- 
+
        uint32_t nelem=1; //if !arrayType
- 
+
        if(cnt++ == 2 && i == 0)
           rel_pos += 0x38;
        rel_pos+=4;
 
-       printf("El Type: %x,%s, TS: %d@%lx:%lx  %x in %s\n", type, types[type], esz, (type==0x1?8:0)+rel_pos,pos, __nswap_32(*(uint32_t*)&buf[pos]), fname);
+       printf("El Type: %x,%s, TS: %d@%x:%x  %x in %s\n", type, types[type], esz, (type==0x1?8:0)+rel_pos,pos, __nswap_32(*(uint32_t*)&buf[pos]), fname);
 
        //assert(typeMap.find(type) != typeMap.end());
 
        pos+=0x1;
        b-=0x1;
        int32_t extra=0;
-   
+
        if(type==37){ //dbbox array
            esz=0;
            args.push_back(consume_pointer(&pos,&b,buf));
@@ -423,7 +423,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
           pos+=2;
           b-=2;
 
-          if(type==0xd){ 
+          if(type==0xd){
              for(uint32_t i=0; i < esz/4; i++)
                 args.push_back(consume_pointer(&pos,&b,buf));
              new SList(rel_pos+8,"pointer",&args);
@@ -470,7 +470,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
            args.push_back(consume_u32(&pos,&b,buf));
            args.push_back(consume_u32(&pos,&b,buf));
            args.push_back(consume_u32(&pos,&b,buf));
-           args.push_back(consume_pointer(&pos,&b,buf)); 
+           args.push_back(consume_pointer(&pos,&b,buf));
            args.push_back(consume_pointer(&pos,&b,buf));
            args.push_back(consume_pointer(&pos,&b,buf,true));
            new SList(rel_pos,"rcb",&args);
@@ -591,12 +591,12 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             args.push_back(consume_u32(&pos,&b,buf));
             args.push_back(consume_u32(&pos,&b,buf));
             args.push_back(consume_u32(&pos,&b,buf));
- 
+
             new SList(rel_pos,"arc",&args);
             extra=0x10;
         }else if(type==68){
             esz=0;
-            uint32_t cnt = __nswap_32(*(uint32_t*)&buf[pos]);            
+            uint32_t cnt = __nswap_32(*(uint32_t*)&buf[pos]);
             pos+=4;
             b-=4;
             for(uint32_t j=0; j < cnt; j++){
@@ -623,7 +623,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             args.push_back(consume_u32(&pos,&b,buf));
 
             esz=0;
-            uint32_t cnt = __nswap_16(*(uint16_t*)&buf[pos]);            
+            uint32_t cnt = __nswap_16(*(uint16_t*)&buf[pos]);
             pos+=2;
             b-=2;
 
@@ -641,14 +641,14 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             esz=0;
             args.push_back(consume_pointer(&pos,&b,buf,true));
             args.push_back(consume_u32(&pos,&b,buf));
-            args.push_back(consume_pointer(&pos,&b,buf,true));  
+            args.push_back(consume_pointer(&pos,&b,buf,true));
             extra+=0x14;
             new SList(rel_pos,"net",&args);
 
        }else if(type==81){ //zeSig
             esz=0;
             args.push_back(consume_pointer(&pos,&b,buf,true));
-            args.push_back(consume_u32(&pos,&b,buf));             
+            args.push_back(consume_u32(&pos,&b,buf));
             extra += 8;
             new SList(rel_pos,"sig",&args);
         }else if(type==82){ //zeTerm
@@ -690,13 +690,13 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
 
             printf("FIG %x\n", ftype);
 
-//0000: 59 0A FC E6 00 00 05 0A 59 00 01 00 2D 59 05 FC 09 00 00 00 1B **58 00 00 05 
+//0000: 59 0A FC E6 00 00 05 0A 59 00 01 00 2D 59 05 FC 09 00 00 00 1B **58 00 00 05
 
             if(ftype==5 || ftype == 0x22 || ftype==0x1a || ftype==0xb || ftype==0x23 || ftype==0x25){
                vector<SList*> rargs;
                for(uint32_t j=0; j < 4; j++){
                   rargs.push_back(consume_s32(&pos,&b,buf));
-               } 
+               }
                args.push_back(new SList(0,"bbox",&rargs));
                consume_pointer(&pos,&b,buf,true); //TODO: LP
             }else if(ftype==9 || ftype==0x21 || ftype==0xd){
@@ -804,7 +804,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             printf("Ftype: %d\n", ftype);
             new SList(rel_pos,"any_inst_" + to_string(ftype),&args);
         }else if(type==95){ //zeMagInst
-// 5F 3A 37 80 34 00 00 01 00 10 52 00 00 00 
+// 5F 3A 37 80 34 00 00 01 00 10 52 00 00 00
             esz=0;
             args.push_back(consume_u32(&pos,&b,buf));
             args.push_back(consume_u32(&pos,&b,buf));
@@ -827,7 +827,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
         uint32_t asz=esz+(pos-opos)+extra;
         if(asz%4)
           asz+=4-(asz%4);
-         
+
         if(false){//type==20){//){//type==89){//Fig
            rel_pos += 0x54;
         }else{
@@ -848,7 +848,7 @@ SList* consume_list(SList *l){
    }
    if(!ret.size())
       return l;
-   return new SList(0,"",&ret);   
+   return new SList(0,"",&ret);
 }
 
 SList* symbolify(SList* l){
@@ -947,15 +947,15 @@ void proc_fig(SList *root){
    root->m_list = root->m_list[3]->m_list;
 
    if(root->m_atom == "bbox"){
-       root->m_atom = string("dbCreateRect(nil list(" + purpose + " " + layer + ") list(") + 
-                      "(" + root->m_list[0]->m_atom + ":" + root->m_list[1]->m_atom + ") " + 
+       root->m_atom = string("dbCreateRect(nil list(" + purpose + " " + layer + ") list(") +
+                      "(" + root->m_list[0]->m_atom + ":" + root->m_list[1]->m_atom + ") " +
                       "(" + root->m_list[2]->m_atom + ":" + root->m_list[3]->m_atom + ")))";
        root->m_escape=false;
        root->m_list.clear();
    }
 
    if(root->m_atom == "polygon"){
-       root->m_atom = string("dbCreatePolygon(nil list(" + purpose + " " + layer + ") list("); 
+       root->m_atom = string("dbCreatePolygon(nil list(" + purpose + " " + layer + ") list(");
        for(auto it=root->m_list.begin(); it!=root->m_list.end(); it++){
              root->m_atom += "(" + (*it)->m_list[0]->m_atom + ":" + (*it)->m_list[1]->m_atom + ") ";
        }
@@ -965,15 +965,15 @@ void proc_fig(SList *root){
    }
 
    if(root->m_atom == "label"){
-       root->m_atom = string("dbCreateLabel(nil list(" + purpose + " " + layer + ") ") + 
-                      "(" + root->m_list[2]->m_atom + ":" + root->m_list[3]->m_atom + ") " + 
+       root->m_atom = string("dbCreateLabel(nil list(" + purpose + " " + layer + ") ") +
+                      "(" + root->m_list[2]->m_atom + ":" + root->m_list[3]->m_atom + ") " +
                       root->m_list[1]->m_atom + ")";
        root->m_escape=false;
        root->m_list.clear();
    }
 
    if(root->m_atom == "path"){
-       root->m_atom = string("dbCreatePath(nil list(" + purpose + " " + layer + ") list("); 
+       root->m_atom = string("dbCreatePath(nil list(" + purpose + " " + layer + ") list(");
        for(auto it=next(root->m_list.begin(),4); it!=root->m_list.end(); it++){
              root->m_atom += "(" + (*it++)->m_atom + ":";
              root->m_atom += (*it)->m_atom + ") ";
@@ -989,8 +989,8 @@ void proc_inst(SList *root){
 //   root->m_atom = root->m_list[1]->m_atom;
 //   root->m_list = root->m_list[1]->m_list;
    root->m_atom = string("dbCreateInstByMasterName(nil ") + hdr->m_list[0]->m_atom + " " +
-                  hdr->m_list[1]->m_atom + " " + hdr->m_list[2]->m_atom + " " + 
-                  "\"inst" + root->m_list[5]->m_atom + "\" " + 
+                  hdr->m_list[1]->m_atom + " " + hdr->m_list[2]->m_atom + " " +
+                  "\"inst" + root->m_list[5]->m_atom + "\" " +
                   "(" + root->m_list[2]->m_atom + ":" + root->m_list[3]->m_atom + "))";
    root->m_list.clear();
    root->m_escape=false;
@@ -1009,24 +1009,24 @@ void proc_skill(SList *root, string prop_name=""){
 
 #if 0
    find_node("let", root, [](SList *t) {
-       t->m_list[1]->m_list[0]->m_list = consume_list(t->m_list[1]->m_list[0]); 
+       t->m_list[1]->m_list[0]->m_list = consume_list(t->m_list[1]->m_list[0]);
    });
 
    find_node("procedure", root, [](SList *t) {
-       t->m_list[1]->m_list[0]->m_list = consume_list(t->m_list[1]->m_list[0]); 
+       t->m_list[1]->m_list[0]->m_list = consume_list(t->m_list[1]->m_list[0]);
    });
 
    find_node("dbReplaceProp", root, [](SList *t) {
-       t->m_list[1]->m_list = consume_list(t->m_list[1]); 
+       t->m_list[1]->m_list = consume_list(t->m_list[1]);
    });
 
    find_node("dbCreateRect", root, [](SList *t) {
-       t->m_list[1]->m_list = consume_list(t->m_list[1]); 
+       t->m_list[1]->m_list = consume_list(t->m_list[1]);
    });
 #endif
    find_nodep("list_node", root, [](SList *t) {
        t->m_list = consume_list(t)->m_list;
-       t->m_atom = ""; 
+       t->m_atom = "";
    });
 
    rename("setq","=",root);
@@ -1106,7 +1106,7 @@ void proc_skill(SList *root, string prop_name=""){
        t->m_list[4] = t->m_list[2];
        t->m_list[2] = t->m_list[3];
        t->m_list[3] = new SList(0,"=");
-       
+
    });
 
 #if 1
@@ -1147,6 +1147,19 @@ string get_cell_name(char* fname) {
 int main(int argc, char** argv){
    //Load entire file into memory
    //FILE* f = fopen("LAYOUT.CDB","r");
+   if (argc > 3) {
+     fprintf(stderr, "Too many arguments: command <file> [<num>]\n");
+     return -1;
+   }
+   if (argc < 2) {
+     fprintf(stderr, "Not enough arguments: command <file> [<num>]\n");
+     return -1;
+   }
+   if( access( argv[1], F_OK ) == -1 ) {
+     fprintf(stderr, "No such file: %s (want a layout.cdb file)\n", argv[1]);
+     return -1;
+   }
+
    FILE* f = fopen(argv[1],"r");
 
    fseek(f,0,SEEK_END);
@@ -1169,7 +1182,7 @@ int main(int argc, char** argv){
    maybe_len = __nswap_32(maybe_len);
    nsegs = __nswap_32(nsegs);
 
- 
+
    printf("SrcID: %X, Date: %s, Data Len: %d, Segments %X, Endian: %X, Txt: %s @%s\n", srcid, date, maybe_len, nsegs, endian, text0, argv[1]);
 
    uint64_t pos=0x80;
@@ -1211,8 +1224,8 @@ if(argc<3 || i==atoi(argv[2])){
    //    assert((d-0x18) % esz == 0);
 #endif
 
-   printf("%x %x\n", pos, sz);
-   
+   printf("%lx %lx\n", pos, sz);
+
    uint32_t dangles=0;
    vector<SList*> allobjs;
    vector<uint32_t> tgts, refs;
@@ -1232,7 +1245,7 @@ if(argc<3 || i==atoi(argv[2])){
          if(!(*it2)->m_tgt)
            continue;
          uint32_t tgt=(*it2)->m_tgt;
-         refs.push_back(tgt);        
+         refs.push_back(tgt);
          SList* stgt = (*frompos.find(tgt)).second;
          if(!stgt){
            dangles++;
@@ -1366,7 +1379,13 @@ if(argc<3 || i==atoi(argv[2])){
    prog->m_escape=false;
    {
        set<SList*> parents;
-       FILE *f = fopen(("output/" + cell_name + ".il").c_str(),"w+");
+       string ofile = ("output/" + cell_name + ".il");
+       FILE *f = fopen(ofile.c_str(),"w+");
+       if (f == NULL) {
+         int errnum = errno;
+         fprintf(stderr, "Unable to create output file '%s': %s\n", ofile.c_str(), strerror( errnum ));
+         return -1;
+       }
        print_reset(f);
        parents.clear();
        prog->print(&parents);
