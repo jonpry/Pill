@@ -189,7 +189,7 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
        uint32_t nelem=1; //if !arrayType
 
        uint32_t rel_pos = ((i+1)<<16) + pos-seg_start - 0x40 + 0x4 + 1;
-       printf("El Type: %x %dd,%s, TS: %d@%lx:%lx  %x\n", type, type, types[type], esz, rel_pos+(type==1?8:0),pos, __nswap_32(*(uint32_t*)&buf[pos]));
+       printf("El Type: %x %dd,%s, TS: %d@%x:%x  %x\n", type, type, types[type], esz, rel_pos+(type==1?8:0),pos, __nswap_32(*(uint32_t*)&buf[pos]));
        assert(*(uint16_t*)&buf[pos] == 0);
 
        //assert(typeMap.find(type) != typeMap.end());
@@ -407,7 +407,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
           rel_pos += 0x38;
        rel_pos+=4;
 
-       printf("El Type: %x,%s, TS: %d@%lx:%lx  %x in %s\n", type, types[type], esz, (type==0x1?8:0)+rel_pos,pos, __nswap_32(*(uint32_t*)&buf[pos]), fname);
+       printf("El Type: %x,%s, TS: %d@%x:%x  %x in %s\n", type, types[type], esz, (type==0x1?8:0)+rel_pos,pos, __nswap_32(*(uint32_t*)&buf[pos]), fname);
 
        //assert(typeMap.find(type) != typeMap.end());
 
@@ -1211,7 +1211,7 @@ if(argc<3 || i==atoi(argv[2])){
    //    assert((d-0x18) % esz == 0);
 #endif
 
-   printf("%x %x\n", pos, sz);
+   printf("%lx %lx\n", pos, sz);
    
    uint32_t dangles=0;
    vector<SList*> allobjs;
