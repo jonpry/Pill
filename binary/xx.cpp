@@ -1147,6 +1147,19 @@ string get_cell_name(char* fname) {
 int main(int argc, char** argv){
    //Load entire file into memory
    //FILE* f = fopen("LAYOUT.CDB","r");
+   if (argc > 3) {
+     fprintf(stderr, "Too many arguments: command <file> [<num>]\n");
+     return -1;
+   }
+   if (argc < 2) {
+     fprintf(stderr, "Not enough arguments: command <file> [<num>]\n");
+     return -1;
+   }
+   if( access( argv[1], F_OK ) == -1 ) {
+     fprintf(stderr, "No such file: %s (want a layout.cdb file)\n", argv[1]);
+     return -1;
+   }
+
    FILE* f = fopen(argv[1],"r");
 
    fseek(f,0,SEEK_END);
@@ -1366,7 +1379,13 @@ if(argc<3 || i==atoi(argv[2])){
    prog->m_escape=false;
    {
        set<SList*> parents;
-       FILE *f = fopen(("output/" + cell_name + ".il").c_str(),"w+");
+       string ofile = ("output/" + cell_name + ".il");
+       FILE *f = fopen(ofile.c_str(),"w+");
+       if (f == NULL) {
+         int errnum = errno;
+         fprintf(stderr, "Unable to create output file '%s': %s\n", ofile.c_str(), strerror( errnum ));
+         return -1;
+       }
        print_reset(f);
        parents.clear();
        prog->print(&parents);

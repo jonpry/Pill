@@ -17,6 +17,7 @@
 //along with Pill.  If not, see <http://www.gnu.org/licenses/>.
 
 
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
