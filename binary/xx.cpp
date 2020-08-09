@@ -815,7 +815,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             new SList(rel_pos,"any_inst_" + to_string(ftype),&args);
         }else if(type==95){ //zeMagInst
 // 5F 3A 37 80 34 00 00 01 00 10 52 00 00 00
-            esz=0;
+            esz=2;
             args.push_back(consume_u32(&pos,&b,buf));
             args.push_back(consume_u32(&pos,&b,buf));
             args.push_back(consume_u32(&pos,&b,buf));
@@ -1133,7 +1133,8 @@ void proc_skill(SList *root, string prop_name=""){
    FILE *f=0;
    if(prop_name == "\"procedure\""){
       f = fopen("out.il","w");
-      root = root->m_list[0]; //TODO: not sure if this will always work
+      if(root->m_list.size())
+         root = root->m_list[0]; //TODO: not sure if this will always work
       root->m_noparen=true;
    }
    print_reset(f);
