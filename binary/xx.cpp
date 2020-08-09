@@ -549,6 +549,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             args.push_back(consume_pointer(&pos,&b,buf));
             args.push_back(consume_pointer(&pos,&b,buf));
             args.push_back(consume_pointer(&pos,&b,buf));
+            args.clear();
             new SList(rel_pos,"group_member",&args);
 
             extra=4;
@@ -1089,6 +1090,14 @@ void proc_skill(SList *root, string prop_name=""){
        t->m_atom = t->m_list[0]->m_atom;
        t->m_list = t->m_list[0]->m_list;
    });
+
+#if 0
+  find_nodep("group_member", root, [](SList *t) {
+       printf("ugh\n");
+       exit(0);
+       t->m_list.clear();
+   });
+#endif
 
   find_node("exists", root, [](SList *t) {
        t->m_atom = t->m_list[0]->m_atom;
