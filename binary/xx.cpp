@@ -20,7 +20,7 @@
 set<uint64_t> consumed;
 map<uint64_t,SList*> frompos;
 
-bool big_endian;
+static bool big_endian;
 
 #define __nswap_16(x) (big_endian?__bswap_16(x):x)
 #define __nswap_32(x) (big_endian?__bswap_32(x):x)
@@ -165,9 +165,11 @@ string prop_types[] = { "uknown", "string", "int", "float", "bool", "time", "fil
 #define MIN(a,b) ((a)<(b)?(a):(b))
 
 void printbytes(uint8_t *buf, uint32_t len){
-   for(uint32_t i=0; i < len; i+=16){
+   for(uint32_t i=0; i < len+8; i+=16){
       printf("%4.4X: ", i);
-      for(uint32_t j=i; j < MIN(i+16,len); j++){
+      for(uint32_t j=i; j < MIN(i+16,len+8); j++){
+         if(j==len)
+            printf("|| ");
          printf("%2.2X ", buf[j]);
       }
       printf("\n");
@@ -349,6 +351,13 @@ SList* consume_u32(uint32_t *pos, int32_t *b, uint8_t *buf){
    return new SList(0,"0x" + to_hex(aloc));
 }
 
+SList* consume_u16(uint32_t *pos, int32_t *b, uint8_t *buf){
+   uint32_t aloc = __nswap_16(*(uint16_t*)&buf[*pos]);
+   *pos+=2;
+   *b-=2;
+   return new SList(0,"0x" + to_hex(aloc));
+}
+
 SList* consume_s32(uint32_t *pos, int32_t *b, uint8_t *buf){
    int32_t aloc = __nswap_32(*(int32_t*)&buf[*pos]);
    *pos+=4;
@@ -392,7 +401,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
        uint32_t opos=pos;
 
        uint32_t type = buf[pos];
-       if(type>96 || !type){
+       if(type>96){// || !type){
           printf("Bad type %x %d\n", type, type);
           //exit(0);
           assert(false);
@@ -692,7 +701,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
 
 //0000: 59 0A FC E6 00 00 05 0A 59 00 01 00 2D 59 05 FC 09 00 00 00 1B **58 00 00 05
 
-            if(ftype==5 || ftype == 0x22 || ftype==0x1a || ftype==0xb || ftype==0x23 || ftype==0x25){
+            if(ftype==5 || ftype == 0x22 || ftype==0x1a || ftype==0xb || ftype==0x23 || ftype==0x24 || ftype==0x25){
                vector<SList*> rargs;
                for(uint32_t j=0; j < 4; j++){
                   rargs.push_back(consume_s32(&pos,&b,buf));
@@ -791,17 +800,18 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             args.push_back(consume_u32(&pos,&b,buf));
             args.push_back(consume_s32(&pos,&b,buf));
 
-            args.push_back(consume_byte(&pos,&b,buf));
-            uint8_t ftype = buf[pos];
-            pos++;
-            b--;
+            uint16_t ftype = __nswap_16(*(uint16_t*)&buf[pos]);
+            printf("Ftype: %d %2.2X %2.2X\n", ftype, buf[pos],buf[pos+1]);
+            args.push_back(consume_u16(&pos,&b,buf));
+
             if(ftype){
                args.push_back(consume_byte(&pos,&b,buf));
                args.push_back(consume_byte(&pos,&b,buf));
                extra=4;
-            }else
-               extra=8;//0x8;
-            printf("Ftype: %d\n", ftype);
+            }else{
+               extra=8;//0x8
+//               esz+=2;
+            }
             new SList(rel_pos,"any_inst_" + to_string(ftype),&args);
         }else if(type==95){ //zeMagInst
 // 5F 3A 37 80 34 00 00 01 00 10 52 00 00 00
