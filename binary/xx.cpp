@@ -999,7 +999,8 @@ void proc_inst(SList *root){
    SList* hdr = root->m_list[1];
 //   root->m_atom = root->m_list[1]->m_atom;
 //   root->m_list = root->m_list[1]->m_list;
-   root->m_atom = string("dbCreateInstByMasterName(nil ") + hdr->m_list[0]->m_atom + " " +
+   if(hdr->m_list.size())
+       root->m_atom = string("dbCreateInstByMasterName(nil ") + hdr->m_list[0]->m_atom + " " +
                   hdr->m_list[1]->m_atom + " " + hdr->m_list[2]->m_atom + " " +
                   "\"inst" + root->m_list[5]->m_atom + "\" " +
                   "(" + root->m_list[2]->m_atom + ":" + root->m_list[3]->m_atom + "))";
@@ -1406,6 +1407,7 @@ if(argc<3 || i==atoi(argv[2])){
          fprintf(stderr, "Unable to create output file '%s': %s\n", ofile.c_str(), strerror( errnum ));
          return -1;
        }
+exit(0);
        print_reset(f);
        parents.clear();
        prog->print(&parents);
