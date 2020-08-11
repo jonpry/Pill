@@ -228,7 +228,7 @@ void parseseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, uint32
        }
 
        if(type==10){
-            uint64_t aloc = __nswap_64(*(uint64_t*)&buf[pos]);
+            uint64_t aloc = __bswap_64(*(uint64_t*)&buf[pos]);
             double d = *(double*)&aloc;
             new SList(rel_pos,format_double(d));
        }
@@ -461,7 +461,7 @@ void parsecseg(uint8_t* buf, uint32_t seg_start, uint32_t pos, uint32_t i, int32
             int32_t aloc = __nswap_32(*(int32_t*)&buf[pos]);
             new SList(rel_pos,to_string(aloc));
        }else if(type==10){ //double
-            uint64_t aloc = __nswap_64(*(uint64_t*)&buf[pos]);
+            uint64_t aloc = __bswap_64(*(uint64_t*)&buf[pos]);
             uint32_t bloc = __nswap_32(*(uint32_t*)&buf[pos]);
             double d = *(double*)&aloc;
             printf("D: %lX S: %X %.14g %f\n", aloc, bloc, d, *(float*)&bloc);
