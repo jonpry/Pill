@@ -67,7 +67,7 @@ def getsqg(*s):
          if len(ret) == 0:
             ret = None
    if len(s) > 2:
-      ret = getsqg([ret] + s[2:])
+      ret = getsqg([ret] + list(s[2:]))
    print("*****GetSqG ret")
    print(ret)
    return ret
@@ -90,6 +90,9 @@ def numberp(s):
 
 def boundp(e):
    return e.expr in skill.variables
+
+def greaterp(a,b):
+   return a > b
 
 def makeTable(name,default):
    return tools.SkillTable(name,default)
@@ -151,11 +154,17 @@ def cadr(l):
 def cdr(l):
    return l[1:]
 
+def cddr(l):
+   return l[2:]
+
 def caddr(l):
    return l[2]
 
 def cadddr(l):
    return l[3]
+
+def cddddr(l):
+   return l[4:]
 
 def yCoord(l):
    return l[1]
@@ -743,6 +752,7 @@ def run(layermap_file,s,r,l):
    skill.procedures['listp'] = listp
    skill.procedures['boundp'] = boundp
    skill.procedures['zerop'] = nullfunc
+   skill.procedures['greaterp'] = greaterp
    skill.procedures['null'] = null
    skill.procedures['errset'] = nullfunc
    skill.procedures['makeTable'] = makeTable
@@ -756,8 +766,10 @@ def run(layermap_file,s,r,l):
    skill.procedures['cadr'] = cadr
    skill.procedures['cdr'] = cdr
    skill.procedures['caddr'] = caddr
+   skill.procedures['cddr'] = cddr
    skill.procedures['caadr'] = findFunc('caadr')
    skill.procedures['cadddr'] = cadddr
+   skill.procedures['cddddr'] = cddddr
    skill.procedures['caar'] = findFunc('caar')
    skill.procedures['cadar'] = findFunc('cadar')
    skill.procedures['cadadr'] = findFunc('cadadr')

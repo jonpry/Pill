@@ -823,7 +823,8 @@ class Visitor(NodeVisitor):
         self.coerse()
         els = self.c.POP_JUMP_IF_FALSE()     
         #if code
-        th_code()
+        if th_code:
+           th_code()
         done = None           
         try:
            if loop:
@@ -1384,11 +1385,13 @@ def cload(code,version):
 
 
 def load_defaults(defaults):
+   print("LOADING DEFAULTS")
    for e in defaults.split("("):
       e = e.split(")")[0].split()
       if len(e) < 3:
          continue
       v = None
+      print("V1: " + e[0])
       if e[1] == "string":
          context.params[e[0]] = str(e[2].split("\"")[1]) 
       elif e[1] == "boolean":
@@ -1419,6 +1422,8 @@ def loadcell(cell):
    current_cell = cell_defs[cell]
    context.params = {}
    load_defaults(current_cell['defaults'])
+
+   context.bag.update(context.params)
 
    if "props" in current_cell:
       load_props(current_cell['props'])
