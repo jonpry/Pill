@@ -38,7 +38,7 @@ def getsqg(*s):
    print("*****GetSqG" + str(len(s)))
    ret = None
    #print s[0]
-   print(s[1])
+   #print(s[1])
    l = s[0]
 
    if not l:
@@ -60,7 +60,7 @@ def getsqg(*s):
          print("was list")
          ret = []
          for e in l:
-            if s[1] in e:
+            if len(s) > 1 and s[1] in e:
                ret.append(e[s[1]])
          if len(ret) == 1:
             ret = ret[0]
@@ -128,7 +128,9 @@ def sprintf(foo,format,*args):
    return format.replace("%L","%s") % nargs
 
 def printf(format, *args):
-   sys.stdout.write(sprintf(None,format,*args))
+   print("DBG print")
+   print(format)
+   #sys.stdout.write(sprintf(None,format,*args))
 
 def artError(format, *args):
    sys.stdout.write(sprintf(None,format,*args))
@@ -144,27 +146,33 @@ def listl(*args,**kwargs):
 
 def car(l):
    print(l)
-   if isinstance(l,list):
+   if isinstance(l,list) or isinstance(l,tools.Lazy):
       return l[0]
    return l
 
 def cadr(l):
-   return l[1]
+   return car(cdr(l))
+
+def caar(l):
+   return car(car(l))
 
 def cdr(l):
    return l[1:]
 
 def cddr(l):
-   return l[2:]
+   return cdr(cdr(l))
+
+def cdddr(l):
+   return cdr(cdr(cdr(l)))
 
 def caddr(l):
-   return l[2]
+   return car(cdr(cdr(l)))
 
 def cadddr(l):
-   return l[3]
+   return car(cdr(cdr(cdr(l))))
 
 def cddddr(l):
-   return l[4:]
+   return car(cdr(cdr(cdr(cdr(l)))))
 
 def yCoord(l):
    return l[1]
@@ -234,7 +242,9 @@ def rodCreateRectBase(layer,width,length,origin=[0,0],elementsX=1,spaceX=0,termI
 
 rodsByName = {}
 def rodCreateRect(layer,width=0,length=0,origin=[0,0],name="",elementsX=1,elementsY=1,spaceX=0,spaceY=0,termIOType=None,
-                  termName=None,pin=None,cvId=None,beginOffset=0,endOffset=0,space=0,fromObj=None,bBox=None,pinLabel=None,pinLabelLayer=None):
+                  termName=None,pin=None,cvId=None,beginOffset=0,endOffset=0,space=0,fromObj=None,bBox=None,pinLabel=None,pinLabelLayer=None,subRectArray=None):
+   #if subRectArray:
+   #   return
    if fromObj:
       width=fromObj['width']
       length=fromObj['length']
@@ -246,7 +256,7 @@ def rodCreateRect(layer,width=0,length=0,origin=[0,0],name="",elementsX=1,elemen
      length = bBox[1][1] - bBox[0][1]
       
    flocals = locals()
-   print("rodCreateRect: " + str([flocals[arg] for arg in inspect.getargspec(rodCreateRect).args]))
+   print("rodCreateRect: " + str([arg + ":" + str(flocals[arg]) for arg in inspect.getargspec(rodCreateRect).args]))
    objs = []
    for x in range(elementsX):
       for y in range(elementsY):
@@ -287,6 +297,11 @@ def rodAlign(alignObj,alignHandle,refObj=None,refHandle=None,ySep=0,xSep=0,refPo
    print("ref: " + str(refObj))
    print("alg: " + str(alignObj))
    print("pnt: " + str(refPoint))
+
+   flocals = locals()
+   print("rodAlign: " + str([arg + ":" + str(flocals[arg]) for arg in inspect.getargspec(rodAlign).args]))
+   if not refObj and not alignObj:
+       return
 
    m = { "lowerLeft" : "lL", "upperLeft" : "uL", "lowerRight" : "lR", "upperRight" : "uR", "lowerCenter" : "lC", 
          "upperCenter" : "uC", "centerCenter" : "cC", "centerRight" : "cR", "centerLeft" : "cL"}
@@ -767,10 +782,11 @@ def run(layermap_file,s,r,l):
    skill.procedures['cdr'] = cdr
    skill.procedures['caddr'] = caddr
    skill.procedures['cddr'] = cddr
+   skill.procedures['cdddr'] = cdddr
    skill.procedures['caadr'] = findFunc('caadr')
    skill.procedures['cadddr'] = cadddr
    skill.procedures['cddddr'] = cddddr
-   skill.procedures['caar'] = findFunc('caar')
+   skill.procedures['caar'] = caar
    skill.procedures['cadar'] = findFunc('cadar')
    skill.procedures['cadadr'] = findFunc('cadadr')
    skill.procedures['yCoord'] = yCoord
@@ -827,6 +843,7 @@ def run(layermap_file,s,r,l):
    skill.procedures['nth'] = nth
    skill.procedures['index'] = findFunc('index')
    skill.procedures['round'] = round
+   skill.procedures['floor'] = math.floor   
    skill.procedures['getLast'] = getLast
    skill.procedures['length'] = len
    skill.procedures['exp'] = math.exp
@@ -856,6 +873,7 @@ def run(layermap_file,s,r,l):
    skill.procedures['dbCreatePolygon'] = dbCreatePolygon
    skill.procedures['dbCreatePath'] = nullfunc
    skill.procedures['dbDeleteObject'] = nullfunc
+   skill.procedures['dbCreateProp'] = nullfunc
 
 def load_props(props_file):
    context.props = props.load_props(props_file)

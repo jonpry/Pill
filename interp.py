@@ -1423,11 +1423,12 @@ def loadcell(cell):
    context.params = {}
    load_defaults(current_cell['defaults'])
 
-   context.bag.update(context.params)
-
    if "props" in current_cell:
       load_props(current_cell['props'])
-
+   else:
+     context.bag = props.PropertyDict()
+     context.bag.update(context.params)
+  
    context.params = context.bag
 
    #This initializes the pcell callback stuff
