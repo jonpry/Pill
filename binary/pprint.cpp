@@ -102,13 +102,17 @@ int main(int argc, char** argv){
                   break;
                }
 
+               if(token=='(' and isalnum(prev_token)){
+                  s = s + token;
+                  break;
+               }
+
                if(s != ""){
                   emit(s);
                   s="";
                }
 
-               if(token != ' ')
-                  emit(string("") + token);
+               emit(string("") + token);
                
             } break;       
          case STATE_ML: {

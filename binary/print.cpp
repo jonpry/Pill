@@ -31,6 +31,18 @@ void print_reset(FILE *f){
    printed.clear();
 }
 
+int countSubstring(const std::string& str, const std::string& sub)
+{
+    if (sub.length() == 0) return 0;
+    int count = 0;
+    for (size_t offset = str.find(sub); offset != std::string::npos;
+     offset = str.find(sub, offset + sub.length()))
+    {
+        ++count;
+    }
+    return count;
+}
+
 void print_token(string s, SList *t, bool dont_print){
    bool lpar = s == "(";
    bool rpar = s == ")";
@@ -69,8 +81,9 @@ void print_token(string s, SList *t, bool dont_print){
       newline=true;
    }
 
-   if(lpar){
-     indent++;
+   int lefts = countSubstring(s,"(");
+   if(lefts){
+     indent+=lefts;
      since_open=0;
    }else if(rpar)
      indent--;
