@@ -231,14 +231,17 @@ def maplayer(layer):
       return l1
    return -1
 
-def rodCreateRectBase(layer,width,length,origin=[0,0],elementsX=1,spaceX=0,termIOType=None,termName=None,pin=None,cvId=None,beginOffset=0,endOffset=0,space=0):
+def rodCreateRectBase(layer,width,length,origin=[0,0],elementsX=1,spaceX=0,termIOType=None,termName=None,pin=None,cvId=None,beginOffset=0,endOffset=0,space=0,subs=None):
    r = None
    l1 = maplayer(layer)
+   if not subs:
+      subs = []
    if l1 >= 0:
       print("found layer")
       r = db.DBox.new(origin[0],origin[1],origin[0]+width,origin[1]+length).to_itype(0.001)
       r = top.shapes(l1).insert(r)
-   return createObj(subs=[r])
+   subs.append(r)
+   return createObj(subs=subs)
 
 rodsByName = {}
 def rodCreateRect(layer,width=0,length=0,origin=[0,0],name="",elementsX=1,elementsY=1,spaceX=0,spaceY=0,termIOType=None,
@@ -258,11 +261,48 @@ def rodCreateRect(layer,width=0,length=0,origin=[0,0],name="",elementsX=1,elemen
    flocals = locals()
    print("rodCreateRect: " + str([arg + ":" + str(flocals[arg]) for arg in inspect.getargspec(rodCreateRect).args]))
    objs = []
+   subs = []
+    
+   if subRectArray:
+      assert(elementsX==1 and elementsY==1)
+      for subRect in subRectArray:
+          torigin = origin
+          twidth = width
+          tlength = length
+          if "lowerLeftOffsetY" in subRect:
+             ofst = subRect["lowerLeftOffsetY"]
+             tlength -= ofst
+             torigin[1] += ofst/2
+          if "lowerLeftOffsetX" in subRect:
+             ofst = subRect["lowerLeftOffsetX"]
+             twidth -= ofst
+             torigin[0] += ofst/2
+          if "upperRightOffsetX" in subRect:
+             ofst = subRect["upperRightOffsetX"]
+             twidth += ofst
+             torigin[0] += ofst/2
+          swidth = subRect["width"]
+          slength = subRect["length"]
+          sspaceX = subRect["spaceX"]
+          sspaceY = subRect["spaceY"]
+          assert(subRect["gap"] == "minimum")
+          telementsX, fooX = maxNinN(twidth,swidth,sspaceX)
+          telementsY, fooY = maxNinN(tlength,slength,sspaceY)
+          for x in range(telementsX):
+             for y in range(telementsY):
+                p = addPoint(torigin,[x * (sspaceX+swidth), y * (sspaceY+slength)])
+                l1 = maplayer(subRect["layer"])
+                if l1 >= 0:
+                   print("found layer")
+                   r = db.DBox.new(p[0],p[1],p[0]+swidth,p[1]+slength).to_itype(0.001)
+                   r = top.shapes(l1).insert(r)
+                   subs.append(r)
+
    for x in range(elementsX):
       for y in range(elementsY):
          p = addPoint(origin,[x * (spaceX+width), y * (spaceY+length)])
-         objs.append(rodCreateRectBase(layer,width,length,origin=p))
-    
+         objs.append(rodCreateRectBase(layer,width,length,origin=p,subs=subs))
+
    objs.reverse()
    if len(objs)==1:
       print(objs[0])
@@ -701,6 +741,12 @@ def typep(v):
 def null(v):
    return not v
 
+def length(l):
+   print("length")
+   if l is None:
+      return 0
+   return len(l)
+ 
 def eval(v):
 #TODO: handle props
    if isinstance(v,Lazy):
@@ -845,7 +891,7 @@ def run(layermap_file,s,r,l):
    skill.procedures['round'] = round
    skill.procedures['floor'] = math.floor   
    skill.procedures['getLast'] = getLast
-   skill.procedures['length'] = len
+   skill.procedures['length'] = length
    skill.procedures['exp'] = math.exp
    skill.procedures['errsetstring'] = nullfunc
    skill.procedures['infile'] = open
