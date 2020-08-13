@@ -96,7 +96,8 @@ int main(int argc, char** argv){
                }
                if(isalnum(token) || token=='.' || token=='-' || token=='+' 
                      || token=='_' || token=='~' || token=='>' || token=='!' 
-                     || token=='=' || token=='|' || token=='&' || token=='\''){
+                     || token=='=' || token=='|' || token=='&' || token=='\''
+                     || token=='?'){
                   s = s + token;
                   break;
                }
