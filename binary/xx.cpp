@@ -1044,8 +1044,9 @@ void proc_skill(SList *root, string prop_name=""){
    rename("setq","=",root);
    rename("getSGq","~>",root);
    rename("plus","+",root);
+   rename("minus","-",root);
    rename("equal","==",root);
-   //rename("greaterp",">",root);
+   rename("greaterp",">",root);
    rename("nequal","!=",root);
    rename("difference","-",root);
    rename("quotient","/",root);
@@ -1060,8 +1061,9 @@ void proc_skill(SList *root, string prop_name=""){
    swap_back("=",root);
    swap_back("~>",root);
    swap_back("+",root);
+   swap_back("-",root);
    swap_back("==",root);
-   //swap_back(">",root);
+   swap_back(">",root);
    swap_back("!=",root);
    swap_back("-",root);
    swap_back("/",root);
@@ -1073,6 +1075,7 @@ void proc_skill(SList *root, string prop_name=""){
 
    to_parent("if",root);
    to_parent("when",root);
+   to_parent("while",root);
    to_parent("foreach",root);
    to_parent("unless",root);
    to_parent("return",root);

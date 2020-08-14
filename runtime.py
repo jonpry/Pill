@@ -681,6 +681,9 @@ def oddp(v):
 def evenp(v):
    return v%2==0
 
+def minus(a,b):
+   return a-b
+
 def listp(v):
    return isinstance(v,list)
 
@@ -889,7 +892,8 @@ def run(layermap_file,s,r,l):
    skill.procedures['nth'] = nth
    skill.procedures['index'] = findFunc('index')
    skill.procedures['round'] = round
-   skill.procedures['floor'] = math.floor   
+   skill.procedures['floor'] = math.floor
+   skill.procedures['minus'] = minus   
    skill.procedures['getLast'] = getLast
    skill.procedures['length'] = length
    skill.procedures['exp'] = math.exp
