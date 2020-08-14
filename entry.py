@@ -89,9 +89,9 @@ for path in paths:
    static_cells[name] = {"func"     : "pcGenCell_" + name,
        "cell_name": name,
        "library": library,
-       "props"    : "props2.il",
+       "props"    : "props_null.il",
        "defaults": """
-  (inWell string "FALSE")
+  (inWell string "TRUE")
   (center string "FALSE")
 """}
    codes.append(path)

@@ -37,8 +37,7 @@ layout.dbu = .001
 def getsqg(*s):
    print("*****GetSqG" + str(len(s)))
    ret = None
-   #print s[0]
-   #print(s[1])
+   print(s)
    l = s[0]
 
    if not l:
@@ -67,7 +66,7 @@ def getsqg(*s):
          if len(ret) == 0:
             ret = None
    if len(s) > 2:
-      ret = getsqg([ret] + list(s[2:]))
+      ret = getsqg(*([ret] + list(s[2:])))
    print("*****GetSqG ret")
    print(ret)
    return ret
@@ -80,6 +79,9 @@ def stringp(s):
    return isinstance(s,str) or isinstance(s,props.StringProperty)
 
 def floatp(s):
+   print("floatp")
+   print(type(s))
+   print(s)
    return isinstance(s,float)
 
 def fixp(s):
@@ -266,13 +268,19 @@ def rodCreateRect(layer,width=0,length=0,origin=[0,0],name="",elementsX=1,elemen
    if subRectArray:
       assert(elementsX==1 and elementsY==1)
       for subRect in subRectArray:
-          torigin = origin
+          torigin = origin[:]
           twidth = width
           tlength = length
           if "lowerLeftOffsetY" in subRect:
              ofst = subRect["lowerLeftOffsetY"]
+             print("lowerLeftOffsetY: " + str(ofst))
              tlength -= ofst
              torigin[1] += ofst/2
+          if "upperRightOffsetY" in subRect:
+             ofst = subRect["upperRightOffsetY"]
+             tlength += ofst
+             torigin[1] -= ofst/2
+             print("upperRightOffsetY: " + str(ofst))
           if "lowerLeftOffsetX" in subRect:
              ofst = subRect["lowerLeftOffsetX"]
              twidth -= ofst
@@ -280,7 +288,8 @@ def rodCreateRect(layer,width=0,length=0,origin=[0,0],name="",elementsX=1,elemen
           if "upperRightOffsetX" in subRect:
              ofst = subRect["upperRightOffsetX"]
              twidth += ofst
-             torigin[0] += ofst/2
+             torigin[0] -= ofst/2
+
           swidth = subRect["width"]
           slength = subRect["length"]
           sspaceX = subRect["spaceX"]
@@ -297,6 +306,7 @@ def rodCreateRect(layer,width=0,length=0,origin=[0,0],name="",elementsX=1,elemen
                    r = db.DBox.new(p[0],p[1],p[0]+swidth,p[1]+slength).to_itype(0.001)
                    r = top.shapes(l1).insert(r)
                    subs.append(r)
+           
 
    for x in range(elementsX):
       for y in range(elementsY):

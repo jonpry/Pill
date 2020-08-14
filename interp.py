@@ -1353,6 +1353,8 @@ def layout(cell,extra_params=None):
    runtime.push_cell(cell_name)
 
 #   print skill.procedures[current_cell['func']]({'parameters' : context.params, 'lib' : {'name' : skill.variables['cdfgData']['id']['lib']['name']} , 'cell' : {'name' : skill.variables['cdfgData']['id']['cell']['name']}} )
+   #print(context.params)
+   #exit(0)
    print(skill.procedures[current_cell['func']]({'parameters' : context.params, 
                  'lib' : props.Property('lib','foo','string'),
                  'cell' : props.Property('cell','bar','string')} ))
