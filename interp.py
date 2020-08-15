@@ -61,7 +61,7 @@ grammar = r"""
      block       = ws? stmts
      procedure   = PROCEDURE ws? LPAR ws? identifier ws? LPAR ws? (identifier ws?)* string? ws? (OPTIONAL ws? LPAR ((identifier/NIL) ws? RPAR)*)? RPAR ws? stmts RPAR
      identifier  = !((reserved ) (ws/RPAR/EQU/PLUS/MINUS/RBR/BANG/TILDA/LT/GT/DOT/LPAR)) ~r"[a-zA-Z_][a-zA-Z_0-9\?]*"
-     reserved    = IF / ELSE / THEN / FOR / PROCEDURE / WHEN / LET / UNLESS / CASE / NIL / FOREACH / SETOF / EXISTS / TAU / RETURN / COND / WHILE / OPTIONAL / PROG
+     reserved    = IF / ELSE / THEN / FOR / PROCEDURE / WHEN / LET / UNLESS / CASE / NIL / FOREACH / SETOF / EXISTS / TAU / RETURN / COND / WHILE / OPTIONAL / PROG / LAMBDA
      list        = LPAR (listelem ws?)* RPAR
      keyword_func= LPAR func_name ws? ((Q identifier ws?)? tuple ws?)+ RPAR
      func_call2  = func_name LPAR ws? ((Q identifier ws?)? tuple ws?)+ RPAR
@@ -81,6 +81,8 @@ grammar = r"""
      cond        = COND LPAR (LPAR assign ws? stmts ws? RPAR)+ RPAR
      case_list   = LPAR (list / assign) ws? stmts ws? RPAR case_list?
      proglet     = (PROG/LET) LPAR ((LPAR (identifier ws?)* RPAR)/(NIL ws?)) stmts ws? RPAR
+     lambda      = LAMBDA ws? LPAR (identifier ws?)* RPAR ws? stmt ws? RPAR
+
      return      = RETURN (LPAR assign? RPAR)?
      number      = ~'\d+\.?\d*' ~"[u]|e-?[0-9]+"?
      string      = '"' ~r'\\.|[^\"\\]*'* '"'
@@ -88,7 +90,7 @@ grammar = r"""
      stmts       = stmt ws? stmts?
       
 
-     value      = (keyword_func/func_call2/if/exists/identifier/number/string/NIL/TAU/proglet) ws?
+     value      = (keyword_func/func_call2/if/exists/identifier/number/string/NIL/TAU/proglet/lambda) ws?
 
  
      vexpr      = (LPAR assign RPAR) / value
@@ -151,6 +153,7 @@ grammar = r"""
      RETURN = "return"
      COND = "cond"
      WHILE = "while"
+     LAMBDA = "lambda"
 
      LPAR        = "(" ws?
      RPAR        = ")" ws?

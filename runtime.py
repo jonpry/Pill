@@ -158,6 +158,15 @@ def cadr(l):
 def caar(l):
    return car(car(l))
 
+def cadar(l):
+   return car(cdr(car(l)))
+
+def cadadr(l):
+   return car(cdr(car(cdr(l))))
+
+def caadr(l):
+   return car(car(cdr(l)))
+
 def cdr(l):
    return l[1:]
 
@@ -469,6 +478,7 @@ def createObj(dbox=None,subs=None):
    obj['lowerRight'] = obj['lR']
    obj['upperRight'] = obj['uR']
    obj['upperLeft'] = obj['uL']
+   obj['bBox'] = [[origin[0],origin[0]+twidth],[origin[1],origin[1]+tlength]]
    print("createObj: " + str(obj))
    return obj
 
@@ -834,22 +844,24 @@ def run(layermap_file,s,r,l):
    skill.procedures['makeTable'] = makeTable
    skill.procedures['dbGet'] = dbGet
    skill.procedures['mod'] = mod
+   skill.procedures['getq'] = findFunc('getq')
    skill.procedures['fix'] = fix
    skill.procedures['printf'] = printf
    skill.procedures['list'] = listl
    skill.procedures['car'] = car
+   skill.procedures['member'] = findFunc('member')
    skill.procedures['xCoord'] = car
    skill.procedures['cadr'] = cadr
    skill.procedures['cdr'] = cdr
    skill.procedures['caddr'] = caddr
    skill.procedures['cddr'] = cddr
    skill.procedures['cdddr'] = cdddr
-   skill.procedures['caadr'] = findFunc('caadr')
+   skill.procedures['caadr'] = caadr
    skill.procedures['cadddr'] = cadddr
    skill.procedures['cddddr'] = cddddr
    skill.procedures['caar'] = caar
-   skill.procedures['cadar'] = findFunc('cadar')
-   skill.procedures['cadadr'] = findFunc('cadadr')
+   skill.procedures['cadar'] = cadar
+   skill.procedures['cadadr'] = cadadr
    skill.procedures['yCoord'] = yCoord
    skill.procedures['envSetVal'] = envSetVal
    skill.procedures['ddGetObj'] = nullfunc
@@ -892,6 +904,9 @@ def run(layermap_file,s,r,l):
    skill.procedures['isCallable'] = isCallable
    skill.procedures['dbSetq'] = nullfunc
    skill.procedures['cons'] = cons
+   skill.procedures['xcons'] = findFunc('xcons')
+   skill.procedures['append'] = findFunc('append')
+   skill.procedures['mapcar'] = findFunc('mapcar')
    skill.procedures['dbExternallyConnectPins'] = nullfunc
    skill.procedures['dbWeaklyConnectPins'] = nullfunc
    skill.procedures['parseString'] = parseString
@@ -905,6 +920,7 @@ def run(layermap_file,s,r,l):
    skill.procedures['index'] = findFunc('index')
    skill.procedures['round'] = round
    skill.procedures['floor'] = math.floor
+   skill.procedures['ceiling'] = math.ceil
    skill.procedures['minus'] = minus   
    skill.procedures['getLast'] = getLast
    skill.procedures['length'] = length
@@ -921,6 +937,7 @@ def run(layermap_file,s,r,l):
    skill.procedures['substring'] = substring
    skill.procedures['dbCreateParamInstByMasterName'] = dbCreateParamInstByMasterName
    skill.procedures['dbOpenCellViewByType'] = dbOpenCellViewByType
+   skill.procedures['dbOpenCellView'] = findFunc('dbOpenCellView')
    skill.procedures['dbCreateParamInst'] = dbCreateParamInst
    skill.procedures['dbCreateInst'] = findFunc('dbCreateInst')
    skill.procedures['dbCreateInstByMasterName'] = dbCreateInstByMasterName
@@ -936,6 +953,9 @@ def run(layermap_file,s,r,l):
    skill.procedures['dbCreatePath'] = nullfunc
    skill.procedures['dbDeleteObject'] = nullfunc
    skill.procedures['dbCreateProp'] = nullfunc
+   skill.procedures['dbCreateNet'] = nullfunc
+   skill.procedures['dbCreateTerm'] = nullfunc
+   skill.procedures['dbLayerOr'] = nullfunc
 
 def load_props(props_file):
    context.props = props.load_props(props_file)
