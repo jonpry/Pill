@@ -739,6 +739,9 @@ def strcat(*a):
      ret += e
    return ret
 
+def mapcar(l, v):
+   assert(False)
+
 def nth(i,l): #TODO: not sure about this
    if isinstance(l,Lazy):
       print(l.expr)
@@ -906,7 +909,7 @@ def run(layermap_file,s,r,l):
    skill.procedures['cons'] = cons
    skill.procedures['xcons'] = findFunc('xcons')
    skill.procedures['append'] = findFunc('append')
-   skill.procedures['mapcar'] = findFunc('mapcar')
+   skill.procedures['mapcar'] = mapcar
    skill.procedures['dbExternallyConnectPins'] = nullfunc
    skill.procedures['dbWeaklyConnectPins'] = nullfunc
    skill.procedures['parseString'] = parseString

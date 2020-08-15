@@ -81,7 +81,7 @@ grammar = r"""
      cond        = COND LPAR (LPAR assign ws? stmts ws? RPAR)+ RPAR
      case_list   = LPAR (list / assign) ws? stmts ws? RPAR case_list?
      proglet     = (PROG/LET) LPAR ((LPAR (identifier ws?)* RPAR)/(NIL ws?)) stmts ws? RPAR
-     lambda      = LAMBDA ws? LPAR (identifier ws?)* RPAR ws? stmt ws? RPAR
+     lambda      = LAMBDA ws? LPAR (identifier ws?)* RPAR ws? stmt ws? 
 
      return      = RETURN (LPAR assign? RPAR)?
      number      = ~'\d+\.?\d*' ~"[u]|e-?[0-9]+"?
@@ -249,7 +249,7 @@ class Visitor(NodeVisitor):
            setattr(self, "visit_" + k, types.MethodType(lambda self, node, children, v=v: self.nullexpr(node,children,v), self))
 
     def compexpr(self, node, children, op):
-       def gen(ref=False,children=children,op=op):
+       def gen_compexpr(ref=False,children=children,op=op):
           r = children[0](ref=ref)
           #print node.expr_name
           if children[1]:
@@ -260,10 +260,10 @@ class Visitor(NodeVisitor):
                 self.c.COMPARE_OP(op)
              assert(ps == self.c.stack_size and ref==False)
           return r
-       return gen
+       return gen_compexpr
 
     def binexpr(self, node, children, ops):
-       def gen(ref=False,children=children,node=node,ops=ops):
+       def gen_binexpr(ref=False,children=children,node=node,ops=ops):
           r = children[0](ref=ref)
           #is_sub=ops[0] == Code.BINARY_SUBTRACT
           #print node.expr_name
@@ -277,10 +277,10 @@ class Visitor(NodeVisitor):
                    op(self.c)
              assert(ps == self.c.stack_size and ref==False)
           return r
-       return gen
+       return gen_binexpr
 
     def nullexpr(self, node, children, ops):
-       def gen(ref=False,children=children,ops=ops):
+       def gen_nullexpr(ref=False,children=children,ops=ops):
           try:
              return children[0](ref=ref)
           except Exception as e:
@@ -289,10 +289,10 @@ class Visitor(NodeVisitor):
              print(node.text)
              exit(0)
 
-       return gen
+       return gen_nullexpr
 
     def unaexpr(self, node, children, op):
-       def gen(ref=False,children=children,op=op,node=node):
+       def gen_unaexpr(ref=False,children=children,op=op,node=node):
           c = children[(op[0]+1)%2]
           if isinstance(c,list):
              print(node.expr_name)
@@ -305,10 +305,10 @@ class Visitor(NodeVisitor):
              op[1](self.c)
           else:
              return r
-       return gen
+       return gen_unaexpr
 
     def incexpr(self, node, children, op):
-       def gen(ref=False,children=children,op=op,node=node):
+       def gen_incexpr(ref=False,children=children,op=op,node=node):
           c = children[(op[0]+1)%2]
           if isinstance(c,list):
              print(node.expr_name)
@@ -366,11 +366,11 @@ class Visitor(NodeVisitor):
           #newvalue,newvalue,obj,key
           self.c.STORE_SUBSCR()
 
-       return gen
+       return gen_incexpr
 
     def visit_quoteexpr(self,node,children):
        #quoteexpr  = (PRIME (list/rangeexpr)) / rangeexpr 
-       def gen(ref=False,children=children,node=node):
+       def gen_quoteexpr(ref=False,children=children,node=node):
           if not isinstance(children[0],list):
             return children[0](ref=ref)
 
@@ -379,12 +379,12 @@ class Visitor(NodeVisitor):
           self.c.LOAD_GLOBAL('runtime')
           self.c.LOAD_ATTR('evalstring')
           self.c.CALL_FUNCTION(2)
-       return gen
+       return gen_quoteexpr
 
     def logicexpr(self, node, children, op):
        #print "parse"
        #print children
-       def gen(ref=False,children=children,op=op):
+       def gen_logicexpr(ref=False,children=children,op=op):
           #print "gen"
           #print children
           r = children[0](ref=ref)
@@ -406,7 +406,7 @@ class Visitor(NodeVisitor):
           self.c.LOAD_CONST(None if not op[1] else True)
           done()
           assert(ps == self.c.stack_size and ref==False)
-       return gen
+       return gen_logicexpr
 
     #This interprets boolean according to skill 
     #TODO empty list is treated as false
@@ -460,13 +460,13 @@ class Visitor(NodeVisitor):
        #done3()
        #done4()
     def visit_derefexpr(self,node,children):
-       def gen(ref=False,node=node,children=children):
+       def gen_derefexpr(ref=False,node=node,children=children):
           return self.do_deref(ref,node,children)
-       return gen
+       return gen_derefexpr
 
     #TODO: this does not actually work if item is a list
     def visit_lderefexpr(self,node,children):
-       def gen(ref=False,children=children,node=node):
+       def gen_lderefexpr(ref=False,children=children,node=node):
           if children[1]:
              self.c.LOAD_GLOBAL("getsqg")
              lde1 = self.c.stack_size
@@ -488,7 +488,7 @@ class Visitor(NodeVisitor):
              return "sqg"
           else:
              return children[0](ref=ref) 
-       return gen
+       return gen_lderefexpr
 
     def do_deref(self,ref,node,children):
           #self.pprint("Dict: ")
@@ -542,7 +542,7 @@ class Visitor(NodeVisitor):
 
     def visit_aryexpr(self,node,children):
        #aryexpr    = vexpr ws? (LBR ororexpr RBR)?
-       def gen(ref=False,node=node,children=children):
+       def gen_aryexpr(ref=False,node=node,children=children):
           if children[2]:
              children[0](ref=False)
              children[2][0][1]()
@@ -551,10 +551,10 @@ class Visitor(NodeVisitor):
                 self.c.BINARY_SUBSCR()
           else:
              return children[0](ref=ref)
-       return gen
+       return gen_aryexpr
 
     def visit_vexpr(self,node,children):
-       def gen(ref=False,node=node,children=children):
+       def gen_vexpr(ref=False,node=node,children=children):
           if hasattr(children[0],"__len__"):
              r = children[0][1](ref=ref)
              return r
@@ -562,17 +562,17 @@ class Visitor(NodeVisitor):
           assert(r != "sqg")
           return r
        #print "v: " + str(gen)
-       return gen
+       return gen_vexpr
 
     def visit_tuple(self,node,children):
        #tuple       = ororexpr (ws? COLON ororexpr ws?)?
-       def gen(ref=False,node=node,children=children):
+       def gen_tuple(ref=False,node=node,children=children):
           r = children[0](ref=ref)
           if children[1]:       
              children[1][0][2](ref=ref)
              self.c.BUILD_LIST(2)
           return r
-       return gen
+       return gen_tuple
 
     def do_return(self):
        #for i in range(self.blocks):
@@ -587,17 +587,17 @@ class Visitor(NodeVisitor):
 
     def visit_return(self,node,children):
        #return      = RETURN (LPAR assign? RPAR)?
-        def gen(node=node,children=children):
+        def gen_return(node=node,children=children):
            #print "return: " + str(self.c.stack_size)
            if children[1] and children[1][0][1]:
               children[1][0][1][0]()
            else:
               self.c.LOAD_CONST(None)
            self.do_return()
-        return gen
+        return gen_return
 
     def visit_number(self, node, children):
-       def gen(ref=False,node=node):
+       def gen_number(ref=False,node=node):
           v = float(children[0].text)
           if children[1]:
              #print "suffix"
@@ -618,34 +618,34 @@ class Visitor(NodeVisitor):
              except:
                 pass
           self.c.LOAD_CONST(v)
-       return gen
+       return gen_number
 
     def visit_string(self, node, children):
-       def gen(ref=False,node=node):
+       def gen_string(ref=False,node=node):
           t = node.text[1:][:-1]
           t = t.encode('UTF-8').decode('unicode_escape')
           self.c.LOAD_CONST(t)
-       return gen
+       return gen_string
 
     def visit_identifier(self,node,children):
-       def gen(ref=False,children=children):
+       def gen_identifier(ref=False,children=children):
           return ("identifier",children[1].text)
-       return gen
+       return gen_identifier
 
     def visit_func_name(self,node,children):
-       def gen(ref=False,children=children):
+       def gen_func_name(ref=False,children=children):
           return ("identifier",children[0].text)
-       return gen
+       return gen_func_name
 
     def visit_keywordfunc(self,node,children):
-       def gen(ref=False,children=children):
+       def gen_keywordfunc(ref=False,children=children):
           #print keywordfunc()
           self.c.LOAD_CONST(-4) #TODO
-       return gen
+       return gen_keywordfunc
 
     #keyword_func= LPAR func_name ws? ((Q identifier ws?)? ororexpr ws?)+ RPAR
     def kwfunc(self,ident,node,children):
-       def gen(ref=False,ident=ident,node=node,children=children):
+       def gen_kwfunc(ref=False,ident=ident,node=node,children=children):
           self.c.set_lineno(bisect.bisect_left(self.breaks,node.start))
  
           ps = self.c.stack_size
@@ -672,12 +672,19 @@ class Visitor(NodeVisitor):
              self.c.LOAD_CONST(k)
           self.c.BUILD_TUPLE(len(keywords))
 
-          assert(self.c.stack_size == ps + 2 + len(positional) + len(keywords))
+          if not(self.c.stack_size == ps + 2 + len(positional) + len(keywords)):
+             print("Error building call for: " + children[ident]()[1])
+             print("Pos: " + str(len(positional)) + ", KW: " + str(len(keywords)))
+
+             print("Got: " + str(self.c.stack_size))
+             print("Expected: " + str(ps + 2 + len(positional) + len(keywords)))
+
+             assert False 
           self.c.CALL_FUNCTION_KW(len(positional),len(keywords)) 
 
           assert(ps+1 == self.c.stack_size)
 
-       return gen
+       return gen_kwfunc
 
     def visit_keyword_func(self,node,children):
        print("visit keyword_func: " + str(children[1]()))
@@ -691,7 +698,7 @@ class Visitor(NodeVisitor):
     def visit_proglet(self,node,children):
        # (PROG/LET) LPAR ((LPAR (identifier ws?)* RPAR)/NIL) stmts ws? RPAR
 
-       def gen(ref=False,node=node,children=children):
+       def gen_proglet(ref=False,node=node,children=children):
           self.locals.append([])
 
           if children[2][0][1]:
@@ -726,17 +733,17 @@ class Visitor(NodeVisitor):
               print(traceback.format_exc(limit=5))
               print(node.text)
               print("possible dead code")
-       return gen
+       return gen_proglet
 
     def visit_let(self,node,children):
        # LET LPAR (identifier ws?)* stmts RPAR
-       def gen(ref=False,node=node,children=children):
+       def gen_let(ref=False,node=node,children=children):
           self.c.LOAD_CONST(None)
           children[3]()
-       return gen
+       return gen_let
 
     def visit_list(self,node,children):
-       def gen(ref=False,node=node,children=children):
+       def gen_list(ref=False,node=node,children=children):
            if not children[1]:
                 #self.c.LOAD_GLOBAL('SkillList')
                 self.c.BUILD_LIST(0)
@@ -769,10 +776,10 @@ class Visitor(NodeVisitor):
              #dump(self.c.code())
              #print "list"
              #exit(0)
-       return gen
+       return gen_list
 
     def visit_value(self, node, children):
-        def gen(ref=False,node=node,children=children):
+        def gen_value(ref=False,node=node,children=children):
            #print children
            self.c.set_lineno(bisect.bisect_left(self.breaks,node.start))
 
@@ -803,25 +810,25 @@ class Visitor(NodeVisitor):
               #self.pprint("Ret: ")
 
 
-        return gen
+        return gen_value
 
     def visit_while(self,node,children):
        #WHEN LPAR ws? ororexpr ws? stmts RPAR
-       def gen(ref=False,node=node,children=children):
+       def gen_while(ref=False,node=node,children=children):
           self.gen_cond(node,children[3],children[5],None,True)
-       return gen
+       return gen_while
 
     def visit_when(self,node,children):
        #WHEN LPAR ws? ororexpr ws? stmts RPAR
-       def gen(ref=False,node=node,children=children):
+       def gen_when(ref=False,node=node,children=children):
           self.gen_cond(node,children[3],children[5],None)
-       return gen
+       return gen_when
 
     def visit_unless(self,node,children):
        #WHEN LPAR ws? ororexpr ws? stmts RPAR
-       def gen(ref=False,node=node,children=children):
+       def gen_unless(ref=False,node=node,children=children):
           self.gen_cond(node,children[3],None,children[5])
-       return gen
+       return gen_unless
   
     def gen_cond(self,node,cond,th_code,el_code,loop=False):
         self.c.LOAD_CONST(None)
@@ -875,11 +882,11 @@ class Visitor(NodeVisitor):
 
     def visit_if(self,node,children):
         #if = IF LPAR ws? assign ws?  (ifthen/ifstmt) ws? RPAR
-        def gen(ref=False,node=node,children=children):
+        def gen_if(ref=False,node=node,children=children):
            #print children[5]
            #exit(0)
            self.gen_cond(node,children[3],children[5][0][0],children[5][0][1])
-        return gen
+        return gen_if
 
     def visit_case_list(self,node,children):
       #LPAR (list / assign) ws? stmts ws? RPAR case_list?
@@ -892,7 +899,7 @@ class Visitor(NodeVisitor):
 
     def visit_case(self,node,children):
       #CASE LPAR identifier ws? case_list RPAR
-      def gen(ref=False,node=node,children=children):
+      def gen_case(ref=False,node=node,children=children):
          v = children[2]()[1]
          self.c.LOAD_FAST("#vars")
          self.c.LOAD_CONST(v)
@@ -949,12 +956,12 @@ class Visitor(NodeVisitor):
 
          for d in dones:
             d()
-      return gen
+      return gen_case
 
     def visit_exists(self,node,children):
        #EXISTS LPAR identifier ws? ororexpr ws? assign RPAR
        #TODO: redo this to generate a lambda
-       def gen(ref=False,node=node,children=children):
+       def gen_exists(ref=False,node=node,children=children):
           self.push_lambda()
           children[6]()
           lam = self.pop_lambda()
@@ -970,11 +977,36 @@ class Visitor(NodeVisitor):
           self.pprint("Range: ")
           self.c.POP_TOP()
           self.gen_loop(children[2]()[1],children[4],pred,rtrue=False)
-       return gen
+       return gen_exists
+
+
+    def visit_lambda(self,node,children):
+       # LAMBDA ws? LPAR (identifier ws?)* RPAR ws? stmt ws? 
+       def gen_lambda(ref=False,node=node,children=children):
+          self.push_lambda()
+          children[6]()
+          lam = self.pop_lambda()
+
+          def pred(node=node,children=children,lam=lam):
+             self.c.POP_TOP()
+             self.c.LOAD_FAST('#procs')
+             self.c.LOAD_CONST(lam)
+             self.c.BINARY_SUBSCR()
+             self.c.CALL_FUNCTION(0)
+
+          #children[4]()
+          #self.pprint("Range: ")
+          pred()
+
+          v = children[3][0][0]()[1]
+          self.c.LOAD_CONST(v)
+          #self.gen_loop(children[2]()[1],children[4],pred,rtrue=False)
+       return gen_lambda
+
 
     def visit_for(self,node,children):
        # FOR LPAR identifier ws? ororexpr ws? ororexpr ws? stmts RPAR
-       def gen(node=node,children=children):
+       def gen_for(node=node,children=children):
           def range_compute(node=node,children=children):
               self.c.LOAD_GLOBAL('range')
               self.c.LOAD_GLOBAL('int')
@@ -993,7 +1025,7 @@ class Visitor(NodeVisitor):
               self.c.LOAD_CONST(False)
              
           self.gen_loop(children[2]()[1],range_compute,loop)
-       return gen
+       return gen_for
 
     def do_exit(self):
         self.c.LOAD_GLOBAL('exit')
@@ -1061,17 +1093,17 @@ class Visitor(NodeVisitor):
 
     def visit_foreach(self,node,children):
        # FOREACH LPAR identifier ws? ororexpr ws? stmts RPAR
-       def gen(node=node,children=children):
+       def gen_foreach(node=node,children=children):
           def loop(node=node,children=children):
              children[6]()
              self.c.POP_TOP()
              self.c.LOAD_CONST(False)
           self.gen_loop(children[2]()[1],children[4],loop)
-       return gen
+       return gen_foreach
 
     def visit_assign(self,node,children):
 #       assign     = tuple (EQU assign)?
-        def gen(ref=False,node=node,children=children):
+        def gen_assign(ref=False,node=node,children=children):
             if children[1]:
                #print "As: " + str(self.c.stack_size) 
                children[1][0][1]()  
@@ -1091,16 +1123,16 @@ class Visitor(NodeVisitor):
                #exit(0)
             else:
                return children[0](ref=ref)
-        return gen
+        return gen_assign
 
     def visit_stmt(self,node,children):
-        def gen(node=node,children=children):
+        def gen_stmt(node=node,children=children):
             self.c.POP_TOP()
             return children[0]()
-        return gen
+        return gen_stmt
 
     def visit_stmts(self,node,children):
-        def gen(node=node,children=children):
+        def gen_stmts(node=node,children=children):
            try:
               children[0]()
            except AssertionError as e:
@@ -1110,7 +1142,7 @@ class Visitor(NodeVisitor):
               print("possible dead code")
            if children[2]:
               children[2][0]()
-        return gen
+        return gen_stmts
 
     def pprint(self,t):
        self.c.LOAD_CONST(t)
@@ -1142,6 +1174,7 @@ class Visitor(NodeVisitor):
        lambda_count += 1
 
        self.prolog()
+       self.c.LOAD_CONST(None) #Nil is default return value
 
     def pop_lambda(self):
        self.c.RETURN_VALUE()
@@ -1161,7 +1194,7 @@ class Visitor(NodeVisitor):
         # PROCEDURE LPAR ws? identifier LPAR ws? (identifier ws?)* string? ws? (OPTIONAL ws? (identifier ws?)*)? RPAR ws? stmts RPAR
         # PROCEDURE ws? LPAR ws? identifier ws? LPAR ws? (identifier ws?)* string? ws? (OPTIONAL ws? LPAR ((identifier/NIL) ws? RPAR)*)? RPAR ws? stmts RPAR
 
-        def gen():
+        def gen_procedure():
            self.c = Code()
            self.code_stack.append(self.c)
 
@@ -1229,7 +1262,7 @@ class Visitor(NodeVisitor):
            self.code_stack = self.code_stack[:-1]
            self.c = self.code_stack[-1]
            self.c.LOAD_CONST(True)
-        return gen
+        return gen_procedure
 
     def visit_block(self,node,children):
         self.c.LOAD_CONST(None)
