@@ -93,6 +93,7 @@ for path in paths:
        "defaults": """
   (inWell string "TRUE")
   (center string "FALSE")
+  (w float 3.0)
 """}
    codes.append(path)
 

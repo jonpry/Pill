@@ -1044,7 +1044,7 @@ void proc_skill(SList *root, string prop_name=""){
    rename("setq","=",root);
    rename("getSGq","~>",root);
    rename("plus","+",root);
-   rename("minus","-",root);
+   //rename("minus","-",root);
    rename("equal","==",root);
    rename("greaterp",">",root);
    rename("nequal","!=",root);
@@ -1056,12 +1056,13 @@ void proc_skill(SList *root, string prop_name=""){
    rename("or","||", root);
    rename("range",":", root);
    rename("quote","'", root);
+   rename("null","!", root);
 
 
    swap_back("=",root);
    swap_back("~>",root);
    swap_back("+",root);
-   swap_back("-",root);
+   //swap_back("-",root);
    swap_back("==",root);
    swap_back(">",root);
    swap_back("!=",root);
@@ -1079,6 +1080,8 @@ void proc_skill(SList *root, string prop_name=""){
    to_parent("foreach",root);
    to_parent("unless",root);
    to_parent("return",root);
+
+//   rename("while","if", root);
 
 #if 1
    find_node("procedure", root, [](SList *t) {

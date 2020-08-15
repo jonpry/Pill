@@ -710,13 +710,19 @@ class Visitor(NodeVisitor):
           children[3]()
           #TODO: returns should point here but need a stack of stack target sizes first 
           #restore var
-          self.c.LOAD_GLOBAL('PopVars')
-          for e in self.locals[-1]:
-             self.c.LOAD_CONST(e)
-          self.c.BUILD_LIST(len(self.locals[-1]))
-          self.c.CALL_FUNCTION(1)
-          self.c.POP_TOP()
-          self.locals = self.locals[:-1] 
+          try:
+             self.c.LOAD_GLOBAL('PopVars')
+             for e in self.locals[-1]:
+                self.c.LOAD_CONST(e)
+                self.c.BUILD_LIST(len(self.locals[-1]))
+                self.c.CALL_FUNCTION(1)
+                self.c.POP_TOP()
+                self.locals = self.locals[:-1] 
+          except AssertionError as e:
+              print(str(e))
+              print(traceback.format_exc(limit=5))
+              print(node.text)
+              print("possible dead code")
        return gen
 
     def visit_let(self,node,children):
@@ -1424,6 +1430,7 @@ def loadcell(cell):
    current_cell = cell_defs[cell]
    context.params = {}
    load_defaults(current_cell['defaults'])
+
 
    if "props" in current_cell:
       load_props(current_cell['props'])

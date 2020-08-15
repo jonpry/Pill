@@ -691,7 +691,9 @@ def oddp(v):
 def evenp(v):
    return v%2==0
 
-def minus(a,b):
+def minus(a,b=None):
+   if b is None:
+     return -a
    return a-b
 
 def listp(v):
