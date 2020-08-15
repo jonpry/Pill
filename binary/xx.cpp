@@ -1043,6 +1043,7 @@ void proc_skill(SList *root, string prop_name=""){
 
    rename("setq","=",root);
    rename("getSGq","~>",root);
+   rename("getq","->",root);
    rename("plus","+",root);
    //rename("minus","-",root);
    rename("equal","==",root);
@@ -1061,6 +1062,7 @@ void proc_skill(SList *root, string prop_name=""){
 
    swap_back("=",root);
    swap_back("~>",root);
+   swap_back("->",root);
    swap_back("+",root);
    //swap_back("-",root);
    swap_back("==",root);

@@ -61,7 +61,7 @@ grammar = r"""
      block       = ws? stmts
      procedure   = PROCEDURE ws? LPAR ws? identifier ws? LPAR ws? (identifier ws?)* string? ws? (OPTIONAL ws? LPAR ((identifier/NIL) ws? RPAR)*)? RPAR ws? stmts RPAR
      identifier  = !((reserved ) (ws/RPAR/EQU/PLUS/MINUS/RBR/BANG/TILDA/LT/GT/DOT/LPAR)) ~r"[a-zA-Z_][a-zA-Z_0-9\?]*"
-     reserved    = IF / ELSE / THEN / FOR / PROCEDURE / WHEN / LET / UNLESS / CASE / NIL / FOREACH / SETOF / EXISTS / TAU / RETURN / COND / WHILE / OPTIONAL / PROG / LAMBDA
+     reserved    = IF / ELSE / THEN / FOR / PROCEDURE / WHEN / LET / UNLESS / CASE / NIL / FOREACH / SETOF / EXISTS / TAU / RETURN / COND / WHILE / OPTIONAL / PROG / LAMBDA / KLIST
      list        = LPAR (listelem ws?)* RPAR
      keyword_func= LPAR func_name ws? ((Q identifier ws?)? tuple ws?)+ RPAR
      func_call2  = func_name LPAR ws? ((Q identifier ws?)? tuple ws?)+ RPAR
@@ -81,16 +81,18 @@ grammar = r"""
      cond        = COND LPAR (LPAR assign ws? stmts ws? RPAR)+ RPAR
      case_list   = LPAR (list / assign) ws? stmts ws? RPAR case_list?
      proglet     = (PROG/LET) LPAR ((LPAR (identifier ws?)* RPAR)/(NIL ws?)) stmts ws? RPAR
-     lambda      = LAMBDA ws? LPAR (identifier ws?)* RPAR ws? stmt ws? 
+     lambda      = LAMBDA ws LPAR (identifier ws?)* RPAR ws? stmt ws? 
+     lambda2     = LAMBDA LPAR ws? LPAR (identifier ws?)* RPAR ws? stmt ws? RPAR
+     nulllist    = KLIST ws?
 
      return      = RETURN (LPAR assign? RPAR)?
      number      = ~'\d+\.?\d*' ~"[u]|e-?[0-9]+"?
      string      = '"' ~r'\\.|[^\"\\]*'* '"'
-     stmt        = procedure / proglet / if / case / when / unless / while / foreach / for  / assign / return / cond / exists /list
+     stmt        = procedure / proglet / if / case / when / unless / while / foreach / for  / assign / return / cond / exists / list 
      stmts       = stmt ws? stmts?
       
 
-     value      = (keyword_func/func_call2/if/exists/identifier/number/string/NIL/TAU/proglet/lambda) ws?
+     value      = (keyword_func/func_call2/if/exists/identifier/number/string/NIL/TAU/proglet/lambda/lambda2/nulllist) ws?
 
  
      vexpr      = (LPAR assign RPAR) / value
@@ -154,6 +156,7 @@ grammar = r"""
      COND = "cond"
      WHILE = "while"
      LAMBDA = "lambda"
+     KLIST = "list"
 
      LPAR        = "(" ws?
      RPAR        = ")" ws?
@@ -778,6 +781,12 @@ class Visitor(NodeVisitor):
              #exit(0)
        return gen_list
 
+    def visit_nulllist(self, node, children):
+        def gen_nulllist(ref=False,node=node,children=children):
+           self.c.LOAD_CONST(None)
+
+        return gen_nulllist
+
     def visit_value(self, node, children):
         def gen_value(ref=False,node=node,children=children):
            #print children
@@ -1002,6 +1011,29 @@ class Visitor(NodeVisitor):
           self.c.LOAD_CONST(v)
           #self.gen_loop(children[2]()[1],children[4],pred,rtrue=False)
        return gen_lambda
+
+    def visit_lambda2(self,node,children):
+       # LAMBDA LPAR ws? LPAR (identifier ws?)* RPAR ws? stmt ws? RPAR
+       def gen_lambda2(ref=False,node=node,children=children):
+          self.push_lambda()
+          children[7]()
+          lam = self.pop_lambda()
+
+          def pred(node=node,children=children,lam=lam):
+             self.c.POP_TOP()
+             self.c.LOAD_FAST('#procs')
+             self.c.LOAD_CONST(lam)
+             self.c.BINARY_SUBSCR()
+             self.c.CALL_FUNCTION(0)
+
+          #children[4]()
+          #self.pprint("Range: ")
+          pred()
+
+          v = children[4][0][0]()[1]
+          self.c.LOAD_CONST(v)
+          #self.gen_loop(children[2]()[1],children[4],pred,rtrue=False)
+       return gen_lambda2
 
 
     def visit_for(self,node,children):

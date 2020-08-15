@@ -633,6 +633,10 @@ def dbOpenCellViewByType(lib,cell,purpose,t):
    print("dbOpenCellViewByType: " + cell)
    return cell
 
+def dbOpenCellView(lib,cell,purpose,t,m):
+   print("dbOpenCellView: " + cell)
+   return cell
+
 def dbCreateRect(cell,layer,coord):
    print("dbCreateRect: " + str(layer) + ", " + str(coord))
    return rodCreateRect(layer,coord[1][0] - coord[0][0],coord[1][1] - coord[0][1],coord[0])
@@ -656,6 +660,7 @@ def dbCreateParamInst(view, cell, name, origin, orient, num=1, parm=None, phys=F
    kobj = ilayout(cell,parm)
    if not kobj:
       print("Instantiation failed")
+      assert(False)
       return None
    dcell = db.DCellInstArray.new(kobj.cell_index(),db.DTrans.new(getRot(orient),False,float(origin[0]),float(origin[1])))
    dcell = top.insert(dcell)
@@ -843,6 +848,7 @@ def run(layermap_file,s,r,l):
    skill.procedures['zerop'] = nullfunc
    skill.procedures['greaterp'] = greaterp
    skill.procedures['null'] = null
+   skill.procedures['error'] = nullfunc
    skill.procedures['errset'] = nullfunc
    skill.procedures['makeTable'] = makeTable
    skill.procedures['dbGet'] = dbGet
@@ -940,7 +946,7 @@ def run(layermap_file,s,r,l):
    skill.procedures['substring'] = substring
    skill.procedures['dbCreateParamInstByMasterName'] = dbCreateParamInstByMasterName
    skill.procedures['dbOpenCellViewByType'] = dbOpenCellViewByType
-   skill.procedures['dbOpenCellView'] = findFunc('dbOpenCellView')
+   skill.procedures['dbOpenCellView'] = dbOpenCellView
    skill.procedures['dbCreateParamInst'] = dbCreateParamInst
    skill.procedures['dbCreateInst'] = findFunc('dbCreateInst')
    skill.procedures['dbCreateInstByMasterName'] = dbCreateInstByMasterName
