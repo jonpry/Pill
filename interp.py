@@ -1437,8 +1437,21 @@ def layout(cell,extra_params=None):
    cell_lib[cell_name] = runtime.pop_cell()
    return cell_lib[cell_name]
 
+def getprops(cell):
+   print(cell)
+   print(cell_defs.keys())
+
+   if not cell in cell_defs:
+      return 
+
+   context.push()
+   loadcell(cell)
+   props = context.params
+   context.pop()
+   return props
+
 def init(layermap):
-   runtime.run(layermap,skill,run,layout)
+   runtime.run(layermap,skill,run,layout,getprops)
 
 def cload(code,version):
    compiled = code.split(".")[0] + ".ilc"

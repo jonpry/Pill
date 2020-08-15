@@ -256,13 +256,15 @@ def rodCreateRectBase(layer,width,length,origin=[0,0],elementsX=1,spaceX=0,termI
 
 rodsByName = {}
 def rodCreateRect(layer,width=0,length=0,origin=[0,0],name="",elementsX=1,elementsY=1,spaceX=0,spaceY=0,termIOType=None,
-                  termName=None,pin=None,cvId=None,beginOffset=0,endOffset=0,space=0,fromObj=None,bBox=None,pinLabel=None,pinLabelLayer=None,subRectArray=None):
+                  termName=None,pin=None,cvId=None,beginOffset=0,endOffset=0,space=0,fromObj=None,bBox=None,pinLabel=None,pinLabelLayer=None,subRectArray=None,size=0):
    #if subRectArray:
    #   return
    if fromObj:
-      width=fromObj['width']
-      length=fromObj['length']
+      width=fromObj['width']+size
+      length=fromObj['length']+size
       origin=fromObj['lL']
+      origin[0] -= size/2
+      origin[1] -= size/2
 
    if bBox:
      origin = bBox[0]
@@ -473,7 +475,8 @@ def createObj(dbox=None,subs=None):
             '_slaves' : [],
             '_masters' : [],
             '_transform' : None,
-            '_id' : uuid.uuid1()} 
+            '_id' : uuid.uuid1(),
+            '_ttype' : 'ROD'} 
    obj['lowerLeft'] = obj['lL']
    obj['lowerRight'] = obj['lR']
    obj['upperRight'] = obj['uR']
@@ -562,6 +565,11 @@ def rodAssignHandleToParameter(**kwargs):
 
 def rodGetObj(i):
    print("rodGetObject: " + str(i))
+   if '_ttype' in i:
+      if i['_ttype'] == "ROD":
+          return i
+
+
    print(rodsByName.keys())
    if i in rodsByName:
       print(rodsByName[i])
@@ -631,11 +639,15 @@ def dbCreateLabel(cell,layer,origin,text,justification=None,orientation=None,fon
 
 def dbOpenCellViewByType(lib,cell,purpose,t):
    print("dbOpenCellViewByType: " + cell)
-   return cell
+   ret = { 'name' : cell, 'isParamCell' : True}
+   ret.update(iprops(cell))
+   return ret
 
 def dbOpenCellView(lib,cell,purpose,t,m):
    print("dbOpenCellView: " + cell)
-   return cell
+   ret = { 'name' : cell, 'isParamCell' : True}
+   ret.update(iprops(cell))
+   return ret
 
 def dbCreateRect(cell,layer,coord):
    print("dbCreateRect: " + str(layer) + ", " + str(coord))
@@ -644,15 +656,19 @@ def dbCreateRect(cell,layer,coord):
 def getRot(o):
    if o == "R0":
       return 0
+   if o == "MY": #TODO
+      return 0
    if o == "R90":
       return 1
    if o == "R180":
       return 2
    if o == "R270":
       return 3
+   print(o)
    assert(False)
 
-def dbCreateParamInst(view, cell, name, origin, orient, num=1, parm=None, phys=False):
+def dbCreateParamInst(view, master, name, origin, orient, num=1, parm=None, phys=False):
+   cell = master['name']
    print("dbCreateParamInst: \"" + str(cell) + "\", " + str(name) + ", " + str(origin) + "," + str(orient))
 
    assert(num==1) 
@@ -667,17 +683,18 @@ def dbCreateParamInst(view, cell, name, origin, orient, num=1, parm=None, phys=F
 
    rodobj = createObj(subs=[dcell])
    rodsByName[name] = rodobj
+   rodobj['master'] = master
    return rodobj
 
 def dbCreateParamInstByMasterName(view, lib, cell, purpose, name, origin, orient, num=1, params=None, phys=False):
    print("paraminst")
    dbCreateParamInst(view,cell,name,origin,orient,num,params,phys)
-   return None
+   return True
 
 def dbCreateInstByMasterName(view, lib, cell, purpose, name, origin, orient="R0"):
    print("createinst")
    dbCreateParamInst(view,cell,name,origin,orient,1,None)
-   return None
+   return True
 
 def get_pname(s):
    print("get_pname: " + str(s))
@@ -780,6 +797,15 @@ def length(l):
       return 0
    return len(l)
  
+def append(a,b):
+   if not a:
+      a = []
+   a.append(b)
+   return a
+
+def getq(a,b):
+   return a[b]
+
 def eval(v):
 #TODO: handle props
    if isinstance(v,Lazy):
@@ -821,12 +847,13 @@ def write():
    layout.write("foo.gds")
 
 layermap = {}
-def run(layermap_file,s,r,l):
-   global skill, interp, layermap, ilayout
+def run(layermap_file,s,r,l,p):
+   global skill, interp, layermap, ilayout, iprops
 
    skill = s
    interp = r
    ilayout = l
+   iprops = p
 
    f = open(layermap_file).read().split("\n")
    for l in f:
@@ -848,12 +875,12 @@ def run(layermap_file,s,r,l):
    skill.procedures['zerop'] = nullfunc
    skill.procedures['greaterp'] = greaterp
    skill.procedures['null'] = null
-   skill.procedures['error'] = nullfunc
+   skill.procedures['error'] = findFunc('error')
    skill.procedures['errset'] = nullfunc
    skill.procedures['makeTable'] = makeTable
    skill.procedures['dbGet'] = dbGet
    skill.procedures['mod'] = mod
-   skill.procedures['getq'] = findFunc('getq')
+   skill.procedures['getq'] = getq
    skill.procedures['fix'] = fix
    skill.procedures['printf'] = printf
    skill.procedures['list'] = listl
@@ -888,6 +915,7 @@ def run(layermap_file,s,r,l):
    skill.procedures['dbCreateLabel'] = dbCreateLabel
    skill.procedures['dbCreateRect'] = dbCreateRect 
    skill.procedures['dbCloseBag'] = nullfunc
+   skill.procedures['dbClose'] = nullfunc
    skill.procedures['dbReplaceProp'] = nullfunc
    skill.procedures['rodCreateRect'] = rodCreateRect  
    skill.procedures['rodAddToY'] = rodAddToY
@@ -914,7 +942,7 @@ def run(layermap_file,s,r,l):
    skill.procedures['dbSetq'] = nullfunc
    skill.procedures['cons'] = cons
    skill.procedures['xcons'] = findFunc('xcons')
-   skill.procedures['append'] = findFunc('append')
+   skill.procedures['append'] = append
    skill.procedures['mapcar'] = mapcar
    skill.procedures['dbExternallyConnectPins'] = nullfunc
    skill.procedures['dbWeaklyConnectPins'] = nullfunc
