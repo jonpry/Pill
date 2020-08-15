@@ -160,7 +160,7 @@ uint32_t sizesc32[] = { 4, 1, 4, 2, 4, 4, 4, 4,  //0
 
 set<uint32_t> arrayTypes = {1,3,5,7,9,11,13,15,35,37,64};
 
-string prop_types[] = { "uknown", "string", "int", "float", "bool", "time", "file", "expr", "nexpr", "hier", "list", "net"};
+string prop_types[] = { "float", "int", "unknown", "bool", "list", "time", "file", "expr", "nexpr", "hier", "list", "net"};
 
 #define MIN(a,b) ((a)<(b)?(a):(b))
 

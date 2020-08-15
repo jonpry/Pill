@@ -27,11 +27,11 @@ grammar = r"""
      listelem   = (db/number/identifier/string/list) ws?
 
      db          = "db" COLON hex
-     identifier  = ~"[a-zA-Z_][a-zA-Z_0-9]*" / ~r'\\[:,$][0-9a-zA-Z]'
+     identifier  = ~"[a-zA-Z_][#a-zA-Z_0-9]*" / ~r'\\[:,$][0-9a-zA-Z]'
      number      = float / integer / hex
-     float       = ~'\d*\.\d*'
+     float       = ~'-?\d*\.\d*'
      hex         = "0x" ~'[0-9a-f]+'
-     integer     = ~'\d+'
+     integer     = ~'-?\d+'
      string      = '"' ~r'\\.|[^\"\\]*'* '"'
 
      LPAR  = "(" ws?
@@ -315,5 +315,12 @@ def load_props(file_name):
         print(o)
         print(e)
    return { 'props' : retd, 'cbs' : cbs}
-     
+
+
+def load_defaults(s):
+   g = Grammar(grammar)
+   g = g.parse(s)
+   iv = Visitor()
+   l = iv.visit(g)
+   return l     
 #print load_props()

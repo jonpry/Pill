@@ -13,10 +13,4 @@
 	nil
     )
 
-    (db:0x2b57acb1 cellView nil objType "prop"
-        prop nil enum nil name
-        "w" object db:0x2b57ad9a range nil
-        value 3.0 valueType "float" assocTextDisplays
-        nil
-    )
 )

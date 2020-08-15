@@ -1462,20 +1462,25 @@ def cload(code,version):
 
 def load_defaults(defaults):
    print("LOADING DEFAULTS")
-   for e in defaults.split("("):
-      e = e.split(")")[0].split()
+   defaults = props.load_defaults("(" + defaults + ")")
+   for e in defaults:
       if len(e) < 3:
          continue
       v = None
       print("V1: " + e[0])
+      print(e)
       if e[1] == "string":
-         context.params[e[0]] = str(e[2].split("\"")[1]) 
+         context.params[e[0]] = e[2]
       elif e[1] == "boolean":
          context.params[e[0]] = e[2] == "t"
       elif e[1] == "float":
          context.params[e[0]] = float(e[2])
       elif e[1] == "int":
          context.params[e[0]] = int(e[2])
+      elif e[1] == "list":
+         context.params[e[0]] = e[2]
+         print(e[0])
+         print(context.params[e[0]])
 
 def load_props(props):
    runtime.load_props(props)
