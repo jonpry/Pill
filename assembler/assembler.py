@@ -220,6 +220,11 @@ class Code(object):
         assert(False)
         self.CALL_FUNCTION(argc,kwargc,CALL_FUNCTION_VAR_KW, 2) # 2 *args,**kw
 
+
+    def CALL_METHOD(self, argc=0, foo=0):
+        self.stackchange((2+argc,1))
+        self.emit_arg('CALL_METHOD',argc);
+
     def BUILD_TUPLE(self, count):
         self.stackchange((count,1))
         self.emit_arg('BUILD_TUPLE',count)

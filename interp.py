@@ -1057,17 +1057,59 @@ class Visitor(NodeVisitor):
           children[6]()
           lam = self.pop_lambda()
 
+          self.c.LOAD_GLOBAL('PushVars')
+          self.c.LOAD_CONST("##setof")
+          self.c.BUILD_LIST(1)
+          self.c.CALL_FUNCTION(1)
+          self.c.POP_TOP()
+
+          self.c.BUILD_LIST(0)
+          self.c.LOAD_FAST('#vars')
+          self.c.LOAD_CONST('##setof')
+          self.c.STORE_SUBSCR()
+
           def pred(node=node,children=children,lam=lam):
              self.c.POP_TOP()
+             self.c.DUP_TOP()
+             self.c.LOAD_FAST('#vars')
+             self.c.LOAD_CONST('##setof')
+             self.c.BINARY_SUBSCR()
+             self.c.POP_TOP()
+
              self.c.LOAD_FAST('#procs')
              self.c.LOAD_CONST(lam)
              self.c.BINARY_SUBSCR()
              self.c.CALL_FUNCTION(0)
+             fwd = self.c.POP_JUMP_IF_FALSE()
+             self.c.LOAD_FAST('#vars')
+             self.c.LOAD_CONST('##setof')
+             self.c.BINARY_SUBSCR()
+             #self.c.DUP_TOP()
+             self.c.LOAD_ATTR('append')
+             self.c.ROT_TWO()
+             #self.c.ROT_THREE()
+             self.c.CALL_FUNCTION(1)
+             self.c.POP_TOP()
+  
+            #self.c.POP_TOP()
+             #self.c.POP_TOP()
+
+             fwd2 = self.c.JUMP_FORWARD()
+             fwd() 
+             self.c.POP_TOP()
+             fwd2()
+             self.c.LOAD_CONST(True)
 
           children[4]()
           self.pprint("Range: ")
           self.c.POP_TOP()
           self.gen_loop(children[2]()[1],children[4],pred,rtrue=False)
+          self.c.POP_TOP()
+
+          self.c.LOAD_FAST('#vars')
+          self.c.LOAD_CONST('##setof')
+          self.c.BINARY_SUBSCR()
+
        return gen_setof
 
     def visit_lambda(self,node,children):
@@ -1512,7 +1554,8 @@ def layout(cell,extra_params=None):
    #exit(0)
    print(skill.procedures[current_cell['func']]({'parameters' : context.params, 
                  'lib' : props.Property('lib','foo','string'),
-                 'cell' : props.Property('cell','bar','string')} ))
+                 'cell' : props.Property('cell','bar','string'),
+                 'shapes' : [ {"lpp" : ["poly", "drawing"]}]} ))
 
    context.pop()
    cell_lib[cell_name] = runtime.pop_cell()
