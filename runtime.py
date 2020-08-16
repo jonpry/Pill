@@ -259,7 +259,8 @@ def rodCreateRectBase(layer,width,length,origin=[0,0],elementsX=1,spaceX=0,termI
 
 rodsByName = {}
 def rodCreateRect(layer,width=0,length=0,origin=[0,0],name="",elementsX=1,elementsY=1,spaceX=0,spaceY=0,termIOType=None,
-                  termName=None,pin=None,cvId=None,beginOffset=0,endOffset=0,space=0,fromObj=None,bBox=None,pinLabel=None,pinLabelLayer=None,subRectArray=None,size=0):
+                  termName=None,pin=None,cvId=None,beginOffset=0,endOffset=0,space=0,fromObj=None,bBox=None,pinLabel=None,
+                  pinLabelLayer=None,subRectArray=None,size=0,pinAccessDir=None,pinLabelHeight=None,pinLabelFont=None):
    #if subRectArray:
    #   return
    if fromObj:
@@ -308,7 +309,7 @@ def rodCreateRect(layer,width=0,length=0,origin=[0,0],name="",elementsX=1,elemen
           slength = subRect["length"]
           sspaceX = subRect["spaceX"]
           sspaceY = subRect["spaceY"]
-          assert(subRect["gap"] == "minimum")
+          #assert(subRect["gap"] == "minimum")
           telementsX, fooX = maxNinN(twidth,swidth,sspaceX)
           telementsY, fooY = maxNinN(tlength,slength,sspaceY)
           for x in range(telementsX):
@@ -543,12 +544,24 @@ def rodAddToY(a,b):
 def rodAddToX(a,b):
    return [a[0]+b,a[1]]
 
+def makeVector(l,init=None):
+   return [init]*l
 
-def rodCreatePolygon(name,layer,fromObj=None):
+
+def rodCreatePolygon(name="",layer=None,fromObj=None,pts=None,pin=None,termName=None,termIOType=None,pinAccessDir=None):
    print("rodCreatePolygon: \"" + name + "\", " + str(layer))
    l1 = maplayer(layer)
    assert(l1 >= 0)  
-   r = db.DPolygon.new(db.DBox.new(fromObj['lL'][0],fromObj['lL'][1],fromObj['uR'][0],fromObj['uR'][1]))
+
+   if pts:
+      dpts = []
+      print("Pts: " + str(len(pts)))
+      for p in pts:
+         print(p)
+         dpts.append(db.DPoint.new(p[0],p[1])) 
+      r = db.DPolygon.new(dpts)
+   else:
+      r = db.DPolygon.new(db.DBox.new(fromObj['lL'][0],fromObj['lL'][1],fromObj['uR'][0],fromObj['uR'][1]))
    r = top.shapes(l1).insert(r)
 
    obj = createObj(subs=[r])
@@ -748,12 +761,11 @@ def cons(a,b):
    if isinstance(b,Lazy):
      b = b.deref()
 
-   if isinstance(a,list):
-     return a+b
-   if isinstance(b,list):
-     return [a] + b
    if not b:
      return [a]
+
+   if isinstance(b,list):
+     return [a] + b
    return [a,b]
 
 def parseString(s,t=None):
@@ -830,6 +842,12 @@ def writeout(a):
 def ddGetObjReadPath(o):
    return "."
 
+def zerop(v):
+   return v == 0
+
+def onep(v):
+   return v == 1
+
 def close(f):
    f.close()
 
@@ -881,13 +899,15 @@ def run(layermap_file,s,r,l,p):
        continue
      layermap[ (l[0],l[1]) ] = [int(l[2]),int(l[3])]
 
+   skill.procedures['makeVector'] = makeVector
    skill.procedures['stringp'] = stringp
    skill.procedures['floatp'] = floatp
    skill.procedures['numberp'] = numberp
    skill.procedures['fixp'] = fixp
    skill.procedures['listp'] = listp
    skill.procedures['boundp'] = boundp
-   skill.procedures['zerop'] = nullfunc
+   skill.procedures['zerop'] = zerop
+   skill.procedures['onep'] = onep
    skill.procedures['greaterp'] = greaterp
    skill.procedures['null'] = null
    skill.procedures['error'] = findFunc('error')

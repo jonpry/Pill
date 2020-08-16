@@ -78,7 +78,7 @@ grammar = r"""
      exists      = EXISTS LPAR identifier ws? ororexpr ws? assign RPAR
      foreach     = FOREACH LPAR identifier ws? assign ws? stmts RPAR
      for         = FOR LPAR identifier ws? assign ws? assign ws? stmts RPAR
-     cond        = COND LPAR (LPAR assign ws? stmts ws? RPAR)+ RPAR
+     cond        = COND LPAR (LPAR ((assign ws? stmts ws?)/TAU) RPAR)+ RPAR
      case_list   = LPAR (list / assign) ws? stmts ws? RPAR case_list?
      proglet     = (PROG/LET) LPAR ((LPAR (identifier ws?)* RPAR)/(NIL ws?)) stmts ws? RPAR
      lambda      = LAMBDA ws LPAR (identifier ws?)* RPAR ws? stmt ws? 
@@ -874,10 +874,14 @@ class Visitor(NodeVisitor):
            exit(0)
 
     def visit_cond(self,node,children):
-       #COND LPAR (LPAR ororexpr ws? stmts ws? RPAR)+ RPAR
+       #  COND LPAR (LPAR ((assign ws? stmts ws?)/TAU) RPAR)+ RPAR
+
        def gen(node=node,children=children):
           for e in children[2]:
-             self.gen_cond(node,e[1],e[3],None)
+             e = e[1][0]
+             print(len(e))
+             if len(e) > 2: 
+                self.gen_cond(node,e[0],e[2],None)
        return gen
  
 

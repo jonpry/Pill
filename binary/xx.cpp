@@ -1120,6 +1120,17 @@ void proc_skill(SList *root, string prop_name=""){
    });
 #endif
 
+  find_node("declare", root, [](SList *t) {
+       t->m_list.resize(3);
+       t->m_list[0] = t->m_list[1]->m_list[1];
+
+       t->m_list[2] = new SList(0,"makeVector");
+       t->m_list[2]->m_list.push_back(t->m_list[1]->m_list[2]);
+       t->m_list[1] = new SList(0,"=");
+//       t->m_list.erase(t->m_list.begin());
+   });
+
+
   find_node("exists", root, [](SList *t) {
        t->m_atom = t->m_list[0]->m_atom;
        t->m_list.erase(t->m_list.begin());
