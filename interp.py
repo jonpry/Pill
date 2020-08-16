@@ -61,13 +61,15 @@ grammar = r"""
      block       = ws? stmts
      procedure   = PROCEDURE ws? LPAR ws? identifier ws? LPAR ws? (identifier ws?)* string? ws? (OPTIONAL ws? LPAR ((identifier/NIL) ws? RPAR)*)? RPAR ws? stmts RPAR
      identifier  = !((reserved ) (ws/RPAR/EQU/PLUS/MINUS/RBR/BANG/TILDA/LT/GT/DOT/LPAR)) ~r"[a-zA-Z_][a-zA-Z_0-9\?]*"
-     reserved    = IF / ELSE / THEN / FOR / PROCEDURE / WHEN / LET / UNLESS / CASE / NIL / FOREACH / SETOF / EXISTS / TAU / RETURN / COND / WHILE / OPTIONAL / PROG / LAMBDA / KLIST
+     reserved    = IF / ELSE / THEN / FOR / PROCEDURE / WHEN / LET / UNLESS / CASE / NIL / FOREACH / SETOF / EXISTS / TAU / RETURN / COND / WHILE / OPTIONAL / PROG / LAMBDA / LIST / SETOF
      list        = LPAR (listelem ws?)* RPAR
+     assoc_list_elem  = identifier ws? listelem ws?
+     assoc_list  = LPAR ws? NIL ws? (assoc_list_elem ws?)+ RPAR
      keyword_func= LPAR func_name ws? ((Q identifier ws?)? tuple ws?)+ RPAR
      func_call2  = func_name LPAR ws? ((Q identifier ws?)? tuple ws?)+ RPAR
  
      func_name   = "fixp" / "bar" / "bam"
-     listelem    = assign/list  
+     listelem    = assign/assoc_list/list  
      ifthen      = THEN ws? stmts ws? (ELSE ws? stmts?)?
      ifstmt      = stmt (ws? stmt)?
      if          = IF LPAR ws? assign ws?  (ifthen/ifstmt) ws? RPAR
@@ -76,6 +78,7 @@ grammar = r"""
      unless      = UNLESS LPAR ws? assign ws? stmts RPAR
      case        = CASE LPAR identifier ws? case_list RPAR
      exists      = EXISTS LPAR identifier ws? ororexpr ws? assign RPAR
+     setof       = SETOF LPAR identifier ws? ororexpr ws? assign RPAR
      foreach     = FOREACH LPAR identifier ws? assign ws? stmts RPAR
      for         = FOR LPAR identifier ws? assign ws? assign ws? stmts RPAR
      cond        = COND LPAR (LPAR ((assign ws? stmts ws?)/TAU) RPAR)+ RPAR
@@ -83,23 +86,23 @@ grammar = r"""
      proglet     = (PROG/LET) LPAR ((LPAR (identifier ws?)* RPAR)/(NIL ws?)) stmts ws? RPAR
      lambda      = LAMBDA ws LPAR (identifier ws?)* RPAR ws? stmt ws? 
      lambda2     = LAMBDA LPAR ws? LPAR (identifier ws?)* RPAR ws? stmt ws? RPAR
-     nulllist    = KLIST ws?
+     nulllist    = LIST ws?
 
      return      = RETURN (LPAR assign? RPAR)?
      number      = ~'\d+\.?\d*' ~"[u]|e-?[0-9]+"?
      string      = '"' ~r'\\.|[^\"\\]*'* '"'
-     stmt        = procedure / proglet / if / case / when / unless / while / foreach / for  / assign / return / cond / exists / list 
+     stmt        = procedure / proglet / if / case / when / unless / while / foreach / for  / assign / return / cond / exists / setof / assoc_list / list 
      stmts       = stmt ws? stmts?
       
 
-     value      = (keyword_func/func_call2/if/exists/identifier/number/string/NIL/TAU/proglet/lambda/lambda2/nulllist) ws?
+     value      = (keyword_func/func_call2/if/exists/setof/identifier/number/string/NIL/TAU/proglet/lambda/lambda2/nulllist) ws?
 
  
      vexpr      = (LPAR assign RPAR) / value
      aryexpr    = vexpr ws? (LBR assign RBR)?
      bitexpr    = aryexpr ws? ( LT assign GT )?
      rangeexpr  = bitexpr ws? ( LT assign COLON assign GT)?
-     quoteexpr  = (PRIME (list/rangeexpr)) / rangeexpr
+     quoteexpr  = (PRIME (assoc_list/list/rangeexpr)) / rangeexpr
      dotexpr    = DOT? quoteexpr
      getrefexpr = dotexpr (DOT dotexpr)*
      derefexpr  = getrefexpr (ARROW getrefexpr)*
@@ -156,7 +159,8 @@ grammar = r"""
      COND = "cond"
      WHILE = "while"
      LAMBDA = "lambda"
-     KLIST = "list"
+     LIST = "list"
+     SETOF = "setof"
 
      LPAR        = "(" ws?
      RPAR        = ")" ws?
@@ -793,6 +797,27 @@ class Visitor(NodeVisitor):
              #exit(0)
        return gen_list
 
+    def visit_assoc_list(self,node,children):
+#  LPAR ws? NIL ws? (assoc_list_elem ws?)+ RPAR
+
+       def gen_assoc_list(ref=False,node=node,children=children):
+          cnt=len(children[4])
+
+          for i in range(cnt):
+             children[4][i][0]()
+             
+          self.c.BUILD_MAP(cnt)
+       return gen_assoc_list
+
+    def visit_assoc_list_elem(self,node,children):
+#  identifier ws? listelem ws?
+
+       def gen_assoc_list_elem(ref=False,node=node,children=children):
+          self.c.LOAD_CONST(children[0]()[1])   
+          children[2]()
+
+       return gen_assoc_list_elem
+
     def visit_nulllist(self, node, children):
         def gen_nulllist(ref=False,node=node,children=children):
            self.c.LOAD_CONST(None)
@@ -1025,6 +1050,25 @@ class Visitor(NodeVisitor):
           self.gen_loop(children[2]()[1],children[4],pred,rtrue=False)
        return gen_exists
 
+    def visit_setof(self,node,children):
+       #SETOF LPAR identifier ws? ororexpr ws? assign RPAR
+       def gen_setof(ref=False,node=node,children=children):
+          self.push_lambda()
+          children[6]()
+          lam = self.pop_lambda()
+
+          def pred(node=node,children=children,lam=lam):
+             self.c.POP_TOP()
+             self.c.LOAD_FAST('#procs')
+             self.c.LOAD_CONST(lam)
+             self.c.BINARY_SUBSCR()
+             self.c.CALL_FUNCTION(0)
+
+          children[4]()
+          self.pprint("Range: ")
+          self.c.POP_TOP()
+          self.gen_loop(children[2]()[1],children[4],pred,rtrue=False)
+       return gen_setof
 
     def visit_lambda(self,node,children):
        # LAMBDA ws? LPAR (identifier ws?)* RPAR ws? stmt ws? 

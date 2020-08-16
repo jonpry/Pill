@@ -228,6 +228,10 @@ class Code(object):
         self.stackchange((count,1))
         self.emit_arg('BUILD_LIST',count)
 
+    def BUILD_MAP(self, count):
+        self.stackchange((count*2,1))
+        self.emit_arg('BUILD_MAP',count)
+
     def UNPACK_SEQUENCE(self, count):
         self.stackchange((1,count))
         self.emit_arg('UNPACK_SEQUENCE',count)
@@ -687,7 +691,7 @@ for op in hasfree:
         setattr(Code, opname[op], with_name(do_free, opname[op]))
 
 compares = { '==' : Compare.EQ, '!=' : Compare.NE, '>' : Compare.GT, '>=' : Compare.GE,
-             '<' : Compare.LT, '<=' : Compare.LE, "in" : Compare.IN}
+             '<' : Compare.LT, '<=' : Compare.LE, "in" : Compare.IN, "is" : Compare.IS}
 
 for op in hasname:
     if not hasattr(Code, opname[op]):

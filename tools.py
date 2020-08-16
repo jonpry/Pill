@@ -55,7 +55,16 @@ class Lazy(object,metaclass=LazyMeta):
          
     def deref(self):
          if not self.obj:
+            print("Beginning lazy eval")
             self.obj = self.ev(self.expr)
+            print("End lazy eval")
+
+
+    def __getitem__(self, key):
+        self.deref()
+        #print(self.obj)
+        #assert(False)
+        return self.obj[key]
 
     def __ne__(self, b):
          if isinstance(b,Lazy):

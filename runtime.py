@@ -260,7 +260,7 @@ def rodCreateRectBase(layer,width,length,origin=[0,0],elementsX=1,spaceX=0,termI
 rodsByName = {}
 def rodCreateRect(layer,width=0,length=0,origin=[0,0],name="",elementsX=1,elementsY=1,spaceX=0,spaceY=0,termIOType=None,
                   termName=None,pin=None,cvId=None,beginOffset=0,endOffset=0,space=0,fromObj=None,bBox=None,pinLabel=None,
-                  pinLabelLayer=None,subRectArray=None,size=0,pinAccessDir=None,pinLabelHeight=None,pinLabelFont=None):
+                  pinLabelLayer=None,subRectArray=None,size=0,pinAccessDir=None,pinLabelHeight=None,pinLabelFont=None,netName=None):
    #if subRectArray:
    #   return
    if fromObj:
@@ -425,7 +425,7 @@ def maxNinN(limit,obj,space):
 
 def rodFillBBoxWithRects(layer,fillBBox,width,length,spaceX,spaceY,gap="distribute",cvId=None):
    print("filBbox")
-   assert(gap=="distribute")
+   #assert(gap=="distribute")
    origin = fillBBox[0]
    bwidth = fillBBox[1][0] - fillBBox[0][0]
    blength = fillBBox[1][1] - fillBBox[0][1]
@@ -582,7 +582,7 @@ def rodAssignHandleToParameter(**kwargs):
    print("assignHandle: " + str(kwargs))
    return None
 
-def rodGetObj(i):
+def rodGetObj(i,cv=None):
    print("rodGetObject: " + str(i))
    if '_ttype' in i:
       if i['_ttype'] == "ROD":
@@ -742,6 +742,9 @@ def oddp(v):
 def evenp(v):
    return v%2==0
 
+def plusp(v):
+   return v>=0
+
 def minus(a,b=None):
    if b is None:
      return -a
@@ -815,7 +818,14 @@ def length(l):
       return 0
    return len(l)
  
+#TODO: one of these is wrong
 def append(a,b):
+   if not a:
+      a = []
+   a.append(b)
+   return a
+
+def append1(a,b):
    if not a:
       a = []
    a.append(b)
@@ -904,6 +914,7 @@ def run(layermap_file,s,r,l,p):
    skill.procedures['floatp'] = floatp
    skill.procedures['numberp'] = numberp
    skill.procedures['fixp'] = fixp
+   skill.procedures['plusp'] = plusp
    skill.procedures['listp'] = listp
    skill.procedures['boundp'] = boundp
    skill.procedures['zerop'] = zerop
@@ -979,6 +990,7 @@ def run(layermap_file,s,r,l,p):
    skill.procedures['cons'] = cons
    skill.procedures['xcons'] = findFunc('xcons')
    skill.procedures['append'] = append
+   skill.procedures['append1'] = append1
    skill.procedures['mapcar'] = mapcar
    skill.procedures['dbExternallyConnectPins'] = nullfunc
    skill.procedures['dbWeaklyConnectPins'] = nullfunc
@@ -992,6 +1004,7 @@ def run(layermap_file,s,r,l,p):
    skill.procedures['nth'] = nth
    skill.procedures['index'] = findFunc('index')
    skill.procedures['round'] = round
+   skill.procedures['int'] = int
    skill.procedures['floor'] = math.floor
    skill.procedures['ceiling'] = math.ceil
    skill.procedures['setarray'] = setarray

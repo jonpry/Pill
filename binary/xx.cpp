@@ -1083,6 +1083,8 @@ void proc_skill(SList *root, string prop_name=""){
    to_parent("if",root);
    to_parent("when",root);
    to_parent("cond",root);
+   to_parent("setof",root);
+   to_parent("case",root);
    to_parent("while",root);
    to_parent("foreach",root);
    to_parent("unless",root);
