@@ -243,7 +243,7 @@ class Visitor(NodeVisitor):
         for k,v in incdec.items():
            setattr(self, "visit_" + k, types.MethodType(lambda self, node, children, v=v: self.incexpr(node,children,v), self))
 
-        logical = { "ororexpr" : [Code.POP_JUMP_IF_TRUE, True], "andandexpr" : [Code.POP_JUMP_IF_FALSE, False]}
+        logical = { "ororexpr" : [Code.POP_JUMP_IF_TRUE, True,True], "andandexpr" : [Code.POP_JUMP_IF_FALSE, False,False]}
         for k,v in logical.items():
            setattr(self, "visit_" + k, types.MethodType(lambda self, node, children, v=v: self.logicexpr(node,children,v), self))
 
@@ -402,11 +402,23 @@ class Visitor(NodeVisitor):
           children[1][0][1]()
           self.coerse()
           p1 = op[0](self.c)
-          self.c.LOAD_CONST(None if op[1] else True)
+          if not op[2]:
+             self.c.LOAD_CONST(None if op[1] else True)
+          else:
+             if op[1]:
+                self.c.LOAD_CONST(None)
+             else:
+                children[1][0][1]()
           done = self.c.JUMP_ABSOLUTE()
           p2()
           p1()
-          self.c.LOAD_CONST(None if not op[1] else True)
+          if not op[2]:
+             self.c.LOAD_CONST(None if not op[1] else True)
+          else:
+             if not op[1]:
+                self.c.LOAD_CONST(None)
+             else:
+                children[1][0][1]()
           done()
           assert(ps == self.c.stack_size and ref==False)
        return gen_logicexpr
@@ -872,16 +884,37 @@ class Visitor(NodeVisitor):
            print(node.text)
            assert(False)
            exit(0)
+        self.c.LOAD_CONST(None)
+        self.c.POP_TOP()
 
     def visit_cond(self,node,children):
        #  COND LPAR (LPAR ((assign ws? stmts ws?)/TAU) RPAR)+ RPAR
 
        def gen(node=node,children=children):
+          self.c.LOAD_CONST(None)
+          ps = self.c.stack_size
+          elses = []
           for e in children[2]:
              e = e[1][0]
              print(len(e))
              if len(e) > 2: 
-                self.gen_cond(node,e[0],e[2],None)
+                e[0]()
+                self.coerse()
+                els = self.c.POP_JUMP_IF_FALSE()
+                self.c.LOAD_CONST(None)
+                e[2]()
+                self.c.POP_TOP()
+                elses.append(self.c.JUMP_ABSOLUTE())
+                els()
+          for e in elses:
+              e()
+          if(ps!=self.c.stack_size):
+             print(ps)
+             print(self.c.stack_size)
+             print(node.text)
+             assert(False)
+             exit(0)
+      #    exit(0)
        return gen
  
 

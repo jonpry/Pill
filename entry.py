@@ -83,20 +83,108 @@ for path in paths:
    codes.append(path)
 
 
-paths = ["PYM2butt_varactor.il"]
+paths = ["PYM2butt_varactor.il", "DFL1sd.il", "DFL1sd2.il", "pfet_symbolic.il", "pEsdFet.il"]
 for path in paths:
    name = path.split(".")[0]
    static_cells[name] = {"func"     : "pcGenCell_" + name,
        "cell_name": name,
        "library": library,
-       "props"    : "props_null.il",
        "defaults": """
   (inWell string "TRUE")
   (center string "FALSE")
-  (w float 3.0)
 """}
    codes.append(path)
 
+static_cells["DFL1sd"]["defaults"] = """
+(bBoxLayer2 list ((0.055 -0.02)  (0.225 0.31)))
+(description string "single nonStrap to li1")
+(res float 600.0)
+(topLayerPinBbox list ((0.055 -0.02)  (0.225 0.31)))
+(topLayer list ("li1" "drawing"))
+(bBoxVia1 list ((0.055 0.06)  (0.225 0.23)))
+(diffLayerBbox list ((0.0 0.0)  (0.265 0.29)))
+(diffLayer list ("diff" "drawing"))
+(pin# int 2)
+(wellLayerEnc float 0.18)
+(snapGrid float 0.005)
+(diffImpXLEnc list (0.125 0.125)) 
+(centerLayer2 list nil)
+(centerVia1 list nil)
+(emulateSlotVia list nil)
+(wellminWidth float 0.0)
+(diffImpEncList list nil)
+(diffCoreImpYEnc list (0.0 0.0))
+(diffCoreImpXREnc list (0.0 0.0))
+(diffCoreImpXLEnc list (0.0 0.0))
+(diffCoreImplant list nil)
+(maxvLayer list nil)
+(diffLayer list ("diff" "drawing"))
+(layer2 list ("li1" "drawing"))
+(viaLayer list ("licon1" "drawing"))
+(wellLayer string "nwell")
+(viaWidth float 0.17)
+(viaSpace float 0.17)
+(diffREnc float 0.04)
+(diffLEnc float 0.055)
+(diffYEnc float 0.06)
+(layer2REnc float 0.0)
+(layer2LEnc float 0.0)
+(layer2YEnc float 0.08)
+(layer2Width float 0.17)
+(diffImplant list ("nsdm" "psdm"))
+(diffImpXREnc list (0.125 0.125))
+(diffImpYEnc list (0.125 0.125))
+(implant boolean 1)
+(inWell boolean 0)
+(w float 0.29)
+(diffImpChoice int 0)
+"""
+
+
+static_cells["DFL1sd2"]["defaults"] = """
+(bBoxLayer2 list ((0.055 -0.02)  (0.225 0.31)))
+(description string "single nonStrap to li1")
+(res float 600.0)
+(topLayerPinBbox list ((0.055 -0.02)  (0.225 0.31)))
+(topLayer list ("li1" "drawing"))
+(bBoxVia1 list ((0.055 0.06)  (0.225 0.23)))
+(diffLayerBbox list ((0.0 0.0)  (0.265 0.29)))
+(diffLayer list ("diff" "drawing"))
+(pin# int 2)
+(wellLayerEnc float 0.18)
+(snapGrid float 0.005)
+(diffImpXLEnc list (0.125 0.125)) 
+(centerLayer2 list nil)
+(centerVia1 list nil)
+(emulateSlotVia list nil)
+(wellminWidth float 0.0)
+(diffImpEncList list nil)
+(diffCoreImpYEnc list (0.0 0.0))
+(diffCoreImpXREnc list (0.0 0.0))
+(diffCoreImpXLEnc list (0.0 0.0))
+(diffCoreImplant list nil)
+(maxvLayer list nil)
+(diffLayer list ("diff" "drawing"))
+(layer2 list ("li1" "drawing"))
+(viaLayer list ("licon1" "drawing"))
+(wellLayer string "nwell")
+(viaWidth float 0.17)
+(viaSpace float 0.17)
+(diffREnc float 0.04)
+(diffLEnc float 0.055)
+(diffYEnc float 0.06)
+(layer2REnc float 0.0)
+(layer2LEnc float 0.0)
+(layer2YEnc float 0.08)
+(layer2Width float 0.17)
+(diffImplant list ("nsdm" "psdm"))
+(diffImpXREnc list (0.125 0.125))
+(diffImpYEnc list (0.125 0.125))
+(implant boolean 1)
+(inWell boolean 0)
+(w float 0.29)
+(diffImpChoice int 0)
+"""
 
 #Sometimes the code accesses strange variables that aren't even supposed to be defined. 
 interp.skill.variables['labelType'] = None
@@ -124,7 +212,7 @@ interp.load_cells(cells)
 #
 try:
    #Run it
-   interp.layout('PYM2butt_varactor')
+   interp.layout('pEsdFet')
 except:
    print(interp.skill.variables)
 

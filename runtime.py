@@ -323,8 +323,8 @@ def rodCreateRect(layer,width=0,length=0,origin=[0,0],name="",elementsX=1,elemen
                    subs.append(r)
            
 
-   for x in range(elementsX):
-      for y in range(elementsY):
+   for x in range(int(elementsX)):
+      for y in range(int(elementsY)):
          p = addPoint(origin,[x * (spaceX+width), y * (spaceY+length)])
          objs.append(rodCreateRectBase(layer,width,length,origin=p,subs=subs))
 
