@@ -132,6 +132,9 @@ def sprintf(foo,format,*args):
 def printf(format, *args):
    print("DBG print")
    print(format)
+   for a in args:
+     print(a)
+   print("END DBG print")
    #sys.stdout.write(sprintf(None,format,*args))
 
 def artError(format, *args):
@@ -324,6 +327,8 @@ def rodCreateRect(layer,width=0,length=0,origin=[0,0],name="",elementsX=1,elemen
          p = addPoint(origin,[x * (spaceX+width), y * (spaceY+length)])
          objs.append(rodCreateRectBase(layer,width,length,origin=p,subs=subs))
 
+   print("Hmm")
+   print(objs)
    objs.reverse()
    if len(objs)==1:
       print(objs[0])
@@ -481,6 +486,7 @@ def createObj(dbox=None,subs=None):
    obj['lowerRight'] = obj['lR']
    obj['upperRight'] = obj['uR']
    obj['upperLeft'] = obj['uL']
+   obj['dbId'] = obj['_id']
    obj['bBox'] = [[origin[0],origin[0]+twidth],[origin[1],origin[1]+tlength]]
    print("createObj: " + str(obj))
    return obj
@@ -656,8 +662,8 @@ def dbCreateRect(cell,layer,coord):
 def getRot(o):
    if o == "R0":
       return 0
-   if o == "MY": #TODO
-      return 0
+   if o == "MY": 
+      return 6
    if o == "R90":
       return 1
    if o == "R180":
@@ -806,6 +812,9 @@ def append(a,b):
 def getq(a,b):
    return a[b]
 
+def snot(a):
+    return not a
+
 def eval(v):
 #TODO: handle props
    if isinstance(v,Lazy):
@@ -832,6 +841,12 @@ def _gets(f):
 
 def substring(s,b,l):
   return s[(b-1):][:l]
+
+def setarray(a,b,c):
+   a[b] = c
+
+def arrayref(a,b):
+   return a[b]
 
 def findFunc(name):
    def find(*args):
@@ -909,6 +924,7 @@ def run(layermap_file,s,r,l,p):
    skill.procedures['cdfParseFloatString'] = cdfParseFloatString
    skill.procedures['max'] = max
    skill.procedures['min'] = min
+   skill.procedures['not'] = snot
    skill.procedures['sqrt'] = math.sqrt
    skill.procedures['log'] = math.log
    skill.procedures['snapToGrid'] = snapToGrid
@@ -958,10 +974,12 @@ def run(layermap_file,s,r,l,p):
    skill.procedures['round'] = round
    skill.procedures['floor'] = math.floor
    skill.procedures['ceiling'] = math.ceil
+   skill.procedures['setarray'] = setarray
    skill.procedures['minus'] = minus   
    skill.procedures['getLast'] = getLast
    skill.procedures['length'] = length
    skill.procedures['exp'] = math.exp
+   skill.procedures['arrayref'] = arrayref
    skill.procedures['errsetstring'] = nullfunc
    skill.procedures['infile'] = open
    skill.procedures['ddGetObjReadPath'] = ddGetObjReadPath
