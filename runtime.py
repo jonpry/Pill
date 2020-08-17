@@ -152,7 +152,10 @@ def listl(*args,**kwargs):
 def car(l):
    print(l)
    if isinstance(l,list) or isinstance(l,tools.Lazy):
-      return l[0]
+      if len(l):
+         return l[0]
+      else:
+         return l
    return l
 
 def cadr(l):
@@ -255,7 +258,7 @@ def rodCreateRectBase(layer,width,length,origin=[0,0],elementsX=1,spaceX=0,termI
       r = db.DBox.new(origin[0],origin[1],origin[0]+width,origin[1]+length).to_itype(0.001)
       r = top.shapes(l1).insert(r)
    subs.append(r)
-   return createObj(subs=subs)
+   return createObj(subs=subs,lpp=layer)
 
 rodsByName = {}
 def rodCreateRect(layer,width=0,length=0,origin=[0,0],name="",elementsX=1,elementsY=1,spaceX=0,spaceY=0,termIOType=None,
@@ -343,6 +346,9 @@ def rodTranslate(alignObj,delta,internal=False,done=None):
          "uC", "cC", "cR", "cL"]
    for h in m:
       alignObj[h] = addPoint(alignObj[h],delta)
+   alignObj['bBox'][0][0] += delta[0]
+   alignObj['bBox'][1][0] += delta[1]
+
    print("ao: " + str(alignObj))
    shapes = alignObj['_shapes']
    print("shapes: " + str(shapes))
@@ -394,15 +400,23 @@ def rodAlign(alignObj,alignHandle,refObj=None,refHandle=None,ySep=0,xSep=0,refPo
       refObj['_slaves'].append(alignObj)
 
 def leftEdge(rod):
+   if isinstance(rod,list):
+        return rod[0][0]
    return rod['lL'][0]
 
 def topEdge(rod):
+   if isinstance(rod,list):
+        return rod[1][0] + rod[1][1]
    return rod['uR'][1]
 
 def bottomEdge(rod):
+   if isinstance(rod,list):
+        return rod[1][0] 
    return rod['lL'][1]
 
 def rightEdge(rod):
+   if isinstance(rod,list):
+        return rod[0][0] + rod[0][1]
    return rod['uR'][0]
 
 def addPoint(a,b):
@@ -441,9 +455,9 @@ def rodFillBBoxWithRects(layer,fillBBox,width,length,spaceX,spaceY,gap="distribu
       rects = rects + rodCreateRect(layer,width,length,p)['_shapes']
       p[1] += spaceY + length
 
-   return createObj(subs=rects)
+   return createObj(subs=rects,lpp=layer)
 
-def createObj(dbox=None,subs=None):
+def createObj(dbox=None,subs=None,lpp=None):
    if not(dbox or (subs and len(subs) > 0 and subs[0])):
        return None
    print("dbox: " + str(dbox))
@@ -488,8 +502,10 @@ def createObj(dbox=None,subs=None):
    obj['upperRight'] = obj['uR']
    obj['upperLeft'] = obj['uL']
    obj['dbId'] = obj['_id']
+   obj['lpp'] = lpp
    obj['bBox'] = [[origin[0],origin[0]+twidth],[origin[1],origin[1]+tlength]]
    print("createObj: " + str(obj))
+   context.shapes.append(obj)
    return obj
 
 def rodCreatePath(layer,width,pts,termIOType=None,termName=None,pin=None,subRect=None,name="",justification="center"):
@@ -529,7 +545,7 @@ def rodCreatePath(layer,width,pts,termIOType=None,termName=None,pin=None,subRect
           subs = subs + e['_shapes']
 
 
-  obj = createObj(subs=subs)
+  obj = createObj(subs=subs,lpp=layer)
 
   print("Path: " + str(obj))
   rodsByName[name] = obj
@@ -564,7 +580,7 @@ def rodCreatePolygon(name="",layer=None,fromObj=None,pts=None,pin=None,termName=
       r = db.DPolygon.new(db.DBox.new(fromObj['lL'][0],fromObj['lL'][1],fromObj['uR'][0],fromObj['uR'][1]))
    r = top.shapes(l1).insert(r)
 
-   obj = createObj(subs=[r])
+   obj = createObj(subs=[r],lpp=layer)
    rodsByName[name] = obj
    return obj
 
@@ -1044,6 +1060,7 @@ def run(layermap_file,s,r,l,p):
    skill.procedures['dbCreateNet'] = nullfunc
    skill.procedures['dbCreateTerm'] = nullfunc
    skill.procedures['dbLayerOr'] = nullfunc
+   skill.procedures['dbMoveFig'] = nullfunc
 
 def load_props(props_file):
    context.props = props.load_props(props_file)

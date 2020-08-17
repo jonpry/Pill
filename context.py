@@ -21,30 +21,36 @@
 bag = {}
 props = {}
 params = {}
+shapes = []
 
 bag_stack = []
 props_stack = []
 params_stack = []
+shapes_stack = []
 
 def push():
-  global bag,props,params
-  global bag_stack,props_stack,params_stack
+  global bag,props,params,shapes
+  global bag_stack,props_stack,params_stack,shapes_stack
 
   bag_stack.append(bag)
   props_stack.append(props)
   params_stack.append(params)
+  shapes_stack.append(shapes)
   bag = {}
   props = {}
   params = {}
+  shapes = []
 
 def pop():
-  global bag,props,params
-  global bag_stack,props_stack,params_stack
+  global bag,props,params,shapes
+  global bag_stack,props_stack,params_stack,shapes_stack
  
   bag = bag_stack[-1]
   props = props_stack[-1]
   params = params_stack[-1]
+  shapes = shapes_stack[-1]
 
   bag_stack = bag_stack[:-1]
   props_stack = props_stack[:-1]
   params_stack = params_stack[:-1]
+  shapes_stack = shapes_stack[:-1]

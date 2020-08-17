@@ -1518,6 +1518,10 @@ copyreg.pickle(types.CodeType, pickle_code, unpickle_code)
 
 import runtime as runtime
 
+def genShapeData(foo):
+   print("genShapeData!")
+   return context.shapes
+
 cell_lib = {}
 def layout(cell,extra_params=None):
    if not cell in cell_defs:
@@ -1555,7 +1559,7 @@ def layout(cell,extra_params=None):
    print(skill.procedures[current_cell['func']]({'parameters' : context.params, 
                  'lib' : props.Property('lib','foo','string'),
                  'cell' : props.Property('cell','bar','string'),
-                 'shapes' : [ {"lpp" : ["poly", "drawing"]}]} ))
+                 'shapes' : tools.Lazy(None,genShapeData)} ))
 
    context.pop()
    cell_lib[cell_name] = runtime.pop_cell()
@@ -1649,6 +1653,9 @@ def loadcell(cell):
      context.bag.update(context.params)
   
    context.params = context.bag
+   context.params['parameters'] = {}
+   context.params['parameters'].update(context.params)
+   del context.params['parameters']["parameters"]
 
    #This initializes the pcell callback stuff
    cdfg_init(current_cell['library'],current_cell['cell_name'])
