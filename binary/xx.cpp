@@ -17,6 +17,8 @@
 
 #include "main.h"
 
+#include <regex>
+
 set<uint64_t> consumed;
 map<uint64_t,SList*> frompos;
 
@@ -1041,6 +1043,8 @@ void proc_skill(SList *root, string prop_name=""){
        t->m_atom = "";
    });
 
+   rename("dangling_0","nil",root);
+
    rename("setq","=",root);
    rename("getSGq","~>",root);
    rename("getq","->",root);
@@ -1365,18 +1369,21 @@ if(argc<3 || i==atoi(argv[2])){
       }
       int type = atoi((*it)->m_list[1]->m_atom.substr(5,1).c_str());
       string rtype = prop_types[type];
-      printf("property %s %s %s %d\n", (*it)->m_list[0]->m_atom.c_str(), (*it)->m_list[2]->m_atom.c_str(), rtype.c_str(), type );
+      printf("(%s %s ", regex_replace((*it)->m_list[0]->m_atom,regex("\\\""),"").c_str(), rtype.c_str() );
+      //printf("T4\n");
       if(type == 4 || type == 0xd){
           proc_skill((*it)->m_list[3],(*it)->m_list[0]->m_atom);
       }
-
+ //     printf("T0\n");
       if(type == 0 || type == 1 || type == 2 || type == 3){
          set<SList*> parents;
          print_reset(0);
          parents.clear();
          (*it)->m_list[3]-> print(&parents);
-         printf("\n");
+      //   printf("\n");
       }
+   //   printf("S4\n");
+#if 0
       if((*it)->m_list.size() > 4){
          set<SList*> parents;
          print_reset(0);
@@ -1384,6 +1391,9 @@ if(argc<3 || i==atoi(argv[2])){
          (*it)->m_list[4]-> print(&parents);
          printf("\n");
       }
+#endif
+      printf(")\n");
+
    }
 #endif
    printf("groups begin\n");

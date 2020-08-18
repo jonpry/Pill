@@ -503,7 +503,7 @@ def createObj(dbox=None,subs=None,lpp=None):
    obj['upperLeft'] = obj['uL']
    obj['dbId'] = obj['_id']
    obj['lpp'] = lpp
-   obj['bBox'] = [[origin[0],origin[0]+twidth],[origin[1],origin[1]+tlength]]
+   obj['bBox'] = [[origin[0],origin[1]],[origin[0]+twidth,origin[1]+tlength]]
    print("createObj: " + str(obj))
    context.shapes.append(obj)
    return obj
@@ -672,6 +672,9 @@ def dbCreateLabel(cell,layer,origin,text,justification=None,orientation=None,fon
    flocals = locals()
    print("createLabel: " + str([flocals[arg] for arg in inspect.getargspec(dbCreateLabel).args]))
 
+def dbCreateProp(cv,prop,t,val):
+   print("dbCreateProp: " + prop + ", " + str(val))
+
 def dbOpenCellViewByType(lib,cell,purpose,t):
    print("dbOpenCellViewByType: " + cell)
    ret = { 'name' : cell, 'isParamCell' : True}
@@ -720,6 +723,11 @@ def dbCreateParamInst(view, master, name, origin, orient, num=1, parm=None, phys
    rodsByName[name] = rodobj
    rodobj['master'] = master
    return rodobj
+
+def dbMoveFig(inst,cv,tr):
+   print("dbMoveFig: \""  + str(tr) )
+
+   rodTranslate(inst,tr[0])
 
 def dbCreateParamInstByMasterName(view, lib, cell, purpose, name, origin, orient, num=1, params=None, phys=False):
    print("paraminst")
@@ -1056,11 +1064,11 @@ def run(layermap_file,s,r,l,p):
    skill.procedures['dbCreatePolygon'] = dbCreatePolygon
    skill.procedures['dbCreatePath'] = nullfunc
    skill.procedures['dbDeleteObject'] = nullfunc
-   skill.procedures['dbCreateProp'] = nullfunc
+   skill.procedures['dbCreateProp'] = dbCreateProp
    skill.procedures['dbCreateNet'] = nullfunc
    skill.procedures['dbCreateTerm'] = nullfunc
    skill.procedures['dbLayerOr'] = nullfunc
-   skill.procedures['dbMoveFig'] = nullfunc
+   skill.procedures['dbMoveFig'] = dbMoveFig
 
 def load_props(props_file):
    context.props = props.load_props(props_file)
