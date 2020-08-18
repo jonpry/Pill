@@ -696,6 +696,8 @@ def getRot(o):
       return 0
    if o == "MY": 
       return 6
+   if o == "MX": 
+      return 4
    if o == "R90":
       return 1
    if o == "R180":
@@ -716,8 +718,29 @@ def dbCreateParamInst(view, master, name, origin, orient, num=1, parm=None, phys
       print("Instantiation failed")
       assert(False)
       return None
-   dcell = db.DCellInstArray.new(kobj.cell_index(),db.DTrans.new(getRot(orient),False,float(origin[0]),float(origin[1])))
+   dcell = db.DCellInstArray.new(kobj.cell_index(),db.DTrans.new(0,False,0,0))
+   ctr = dcell.bbox(layout).center()
+
+   trans = dcell.trans
+   if orient=="MY":
+      trans = db.DTrans.new(0,False,0,-ctr.y) * trans
+   trans = db.DTrans.new(getRot(orient),False,0,0) * trans
+   trans = db.DTrans.new(0,False,origin[0],origin[1]) * trans
+   if orient=="MY":
+      trans = db.DTrans.new(0,False,0,ctr.y) * trans
+   dcell.trans = trans 
+   print("CREATEPARAM")
+   print(ctr)
+   ctr = dcell.bbox(layout).center()
+   print(ctr)
+
+
    dcell = top.insert(dcell)
+   ctr2 = dcell.dbbox().transformed(trans).center()
+   print(ctr2)
+
+   print(trans)
+   ##exit(0)
 
    rodobj = createObj(subs=[dcell])
    rodsByName[name] = rodobj
@@ -726,7 +749,7 @@ def dbCreateParamInst(view, master, name, origin, orient, num=1, parm=None, phys
 
 def dbMoveFig(inst,cv,tr):
    print("dbMoveFig: \""  + str(tr) )
-
+   #tr[0][1] *= -1
    rodTranslate(inst,tr[0])
 
 def dbCreateParamInstByMasterName(view, lib, cell, purpose, name, origin, orient, num=1, params=None, phys=False):
