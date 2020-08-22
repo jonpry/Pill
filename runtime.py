@@ -693,17 +693,17 @@ def dbCreateRect(cell,layer,coord):
 
 def getRot(o):
    if o == "R0":
-      return 0
+      return db.DTrans.R0
    if o == "MY": 
-      return 6
+      return db.DTrans.M90
    if o == "MX": 
-      return 4
+      return db.DTrans.M0
    if o == "R90":
-      return 1
+      return db.DTrans.R90
    if o == "R180":
-      return 2
+      return db.DTrans.R180
    if o == "R270":
-      return 3
+      return db.DTrans.R270
    print(o)
    assert(False)
 
@@ -718,16 +718,13 @@ def dbCreateParamInst(view, master, name, origin, orient, num=1, parm=None, phys
       print("Instantiation failed")
       assert(False)
       return None
-   dcell = db.DCellInstArray.new(kobj.cell_index(),db.DTrans.new(0,False,0,0))
+   dcell = db.DCellInstArray.new(kobj.cell_index(),db.DTrans.new(getRot(orient),0,0))
    ctr = dcell.bbox(layout).center()
 
    trans = dcell.trans
-   if orient=="MY":
-      trans = db.DTrans.new(0,False,0,-ctr.y) * trans
-   trans = db.DTrans.new(getRot(orient),False,0,0) * trans
    trans = db.DTrans.new(0,False,origin[0],origin[1]) * trans
-   if orient=="MY":
-      trans = db.DTrans.new(0,False,0,ctr.y) * trans
+#   if orient=="MY":
+#      trans = db.DTrans.new(0,False,ctr.x*4,ctr.y*2) * trans
    dcell.trans = trans 
    print("CREATEPARAM")
    print(ctr)
