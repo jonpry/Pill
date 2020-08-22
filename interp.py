@@ -247,7 +247,7 @@ class Visitor(NodeVisitor):
         for k,v in incdec.items():
            setattr(self, "visit_" + k, types.MethodType(lambda self, node, children, v=v: self.incexpr(node,children,v), self))
 
-        logical = { "ororexpr" : [Code.POP_JUMP_IF_TRUE, True,True], "andandexpr" : [Code.POP_JUMP_IF_FALSE, False,False]}
+        logical = { "andandexpr" : [Code.POP_JUMP_IF_FALSE, False,False]}
         for k,v in logical.items():
            setattr(self, "visit_" + k, types.MethodType(lambda self, node, children, v=v: self.logicexpr(node,children,v), self))
 
@@ -387,6 +387,27 @@ class Visitor(NodeVisitor):
           self.c.LOAD_ATTR('evalstring')
           self.c.CALL_FUNCTION(2)
        return gen_quoteexpr
+
+    def visit_ororexpr(self, node, children):
+       def gen_ororexpr(ref=False,children=children):
+          #print "gen"
+          #print children
+          r = children[0](ref=ref)
+
+          if not children[1]:
+            return r
+ 
+          self.c.DUP_TOP()
+          self.coerse()
+          els = self.c.POP_JUMP_IF_FALSE()
+          fwd = self.c.JUMP_FORWARD()
+          els()
+          self.c.POP_TOP()
+          children[1][0][1]()
+          fwd()
+       return gen_ororexpr
+
+
 
     def logicexpr(self, node, children, op):
        #print "parse"

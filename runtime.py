@@ -829,6 +829,16 @@ def strcat(*a):
      ret += e
    return ret
 
+def mmax(*l):
+   print("mmax")
+   print(*l)    
+   return max(*l)
+
+def mmin(*l):
+   print("mmin")
+   print(*l)    
+   return min(*l)
+
 def mapcar(l, v):
    assert(False)
 
@@ -1000,8 +1010,8 @@ def run(layermap_file,s,r,l,p):
    skill.procedures['evalstring'] = evalstring
    skill.procedures['techGetParam'] = techGetParam
    skill.procedures['cdfParseFloatString'] = cdfParseFloatString
-   skill.procedures['max'] = max
-   skill.procedures['min'] = min
+   skill.procedures['max'] = mmax
+   skill.procedures['min'] = mmin
    skill.procedures['not'] = snot
    skill.procedures['sqrt'] = math.sqrt
    skill.procedures['log'] = math.log
@@ -1068,7 +1078,7 @@ def run(layermap_file,s,r,l,p):
    skill.procedures['isPreSet'] = findFunc('isPreSet')
    skill.procedures['isFile'] = os.path.isfile
    skill.procedures['close'] = close
-   skill.procedures['exit'] = exit
+   skill.procedures['exit'] = exit 
    skill.procedures['substring'] = substring
    skill.procedures['dbCreateParamInstByMasterName'] = dbCreateParamInstByMasterName
    skill.procedures['dbOpenCellViewByType'] = dbOpenCellViewByType
