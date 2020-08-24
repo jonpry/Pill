@@ -689,6 +689,7 @@ def dbOpenCellView(lib,cell,purpose,t,m):
 
 def dbCreateRect(cell,layer,coord):
    print("dbCreateRect: " + str(layer) + ", " + str(coord))
+   #assert(False)
    return rodCreateRect(layer,coord[1][0] - coord[0][0],coord[1][1] - coord[0][1],coord[0])
 
 def getRot(o):
@@ -709,7 +710,7 @@ def getRot(o):
 
 def dbCreateParamInst(view, master, name, origin, orient, num=1, parm=None, phys=False):
    cell = master['name']
-   print("dbCreateParamInst: \"" + str(cell) + "\", " + str(name) + ", " + str(origin) + "," + str(orient))
+   print("dbCreateParamInst: \"" + str(cell) + "\", " + str(name) + ", " + str(origin) + "," + str(orient) + ", " + str(parm))
 
    assert(num==1) 
 
@@ -814,6 +815,9 @@ def cons(a,b):
    if isinstance(b,list):
      return [a] + b
    return [a,b]
+
+def xcons(a,b):
+   return cons(b,a)
 
 def parseString(s,t=None):
    if not t:
@@ -1042,7 +1046,7 @@ def run(layermap_file,s,r,l,p):
    skill.procedures['isCallable'] = isCallable
    skill.procedures['dbSetq'] = nullfunc
    skill.procedures['cons'] = cons
-   skill.procedures['xcons'] = findFunc('xcons')
+   skill.procedures['xcons'] = xcons
    skill.procedures['append'] = append
    skill.procedures['append1'] = append1
    skill.procedures['mapcar'] = mapcar

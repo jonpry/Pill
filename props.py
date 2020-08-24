@@ -257,7 +257,7 @@ class StringProperty(str,metaclass=PropMetaStr):
 def Property(name,value,t):
 
     if t == "boolean":
-       return BooleanProperty(name,value)
+       return StringProperty(name,"TRUE" if value else "FALSE")
     if t == "string":
        return StringProperty(name,value)
     if t == "float":

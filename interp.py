@@ -1561,7 +1561,10 @@ def layout(cell,extra_params=None):
    if extra_params:
       assert(isinstance(extra_params,list))
       for t in extra_params:
-         context.params[t[0]] = props.Property(t[0],t[2],t[1])
+         p = props.Property(t[0],t[2],t[1])
+         context.params[t[0]] = p
+         context.bag[t[0]] = p
+         context.params['parameters'][t[0]] = p
 
    print("inst params: " + str(context.params))
 
@@ -1634,7 +1637,7 @@ def load_defaults(defaults):
       if e[1] == "string":
          context.params[e[0]] = e[2]
       elif e[1] == "boolean":
-         context.params[e[0]] = e[2] == "t"
+         context.params[e[0]] = 'TRUE' if e[2] == "t" else 'FALSE'
       elif e[1] == "float":
          context.params[e[0]] = float(e[2])
       elif e[1] == "int":
